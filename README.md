@@ -8,6 +8,9 @@ A pixel-accurate desktop interface clone of the Goodreads **"My Books"** dashboa
 Librio strips away platform clutter—including social activity feeds, recommendation algorithms, and community reviews—to deliver a hyper-focused, single-page utility dashboard. The primary goal of the project is to demonstrate localized array manipulation through real-time text filtering and dual-direction column sorting on a structured dataset representing a user's digital bookshelf.
 
 ---
+## Local Development
+
+See [SETUP.md](./SETUP.md) for detailed installation and development instructions.
 
 ## 🚀 Core Features
 
