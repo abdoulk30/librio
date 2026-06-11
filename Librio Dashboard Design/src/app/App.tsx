@@ -1,9 +1,36 @@
 import React, { useState, useMemo } from "react";
 import { Search, Bell, Mail, Users, ChevronDown as ChevronDownNav, MessageCircle } from "lucide-react";
+import narutoCover from "../imports/naruto.png";
+import onePieceCover from "../imports/onepiece.png";
+import gameOfThronesCover from "../imports/agot.png";
+import bleachCover from "../imports/bleach.png";
+import fairyTailCover from "../imports/fairytail.png";
+import wimpyKidCover from "../imports/diary.png";
+import lightningThiefCover from "../imports/percy.png";
+import attackOnTitanCover from "../imports/aot.png";
+import batmanCover from "../imports/batman.png";
+import myHeroAcademiaCover from "../imports/mha.png";
+import spiderManCover from "../imports/spiderman.png";
 
 {/* MARKER-MAKE-KIT-INVOKED */}
 
-const BOOKS = [
+type BookShelf = "read" | "currently-reading" | "want-to-read" | "did-not-finish";
+
+interface Book {
+  id: number;
+  title: string;
+  titleSort: string;
+  author: string;
+  authorSort: string;
+  avgRating: number;
+  starCount: number;
+  shelf: BookShelf;
+  dateAdded: string;
+  coverUrl: string;
+  coverAlt: string;
+}
+
+const BOOKS: Book[] = [
   {
     id: 1,
     title: "Naruto, Vol. 1: Uzumaki Naruto",
@@ -12,9 +39,9 @@ const BOOKS = [
     authorSort: "Kishimoto",
     avgRating: 4.41,
     starCount: 5,
-    shelf: "read" as const,
+    shelf: "read",
     dateAdded: "Jun 08, 2026",
-    coverUrl: "https://images.unsplash.com/photo-1594007759138-855170ec8dc0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=100",
+    coverUrl: narutoCover,
     coverAlt: "Naruto Vol 1 cover",
   },
   {
@@ -25,9 +52,9 @@ const BOOKS = [
     authorSort: "Oda",
     avgRating: 4.49,
     starCount: 5,
-    shelf: "currently-reading" as const,
+    shelf: "currently-reading",
     dateAdded: "Jun 08, 2026",
-    coverUrl: "https://images.unsplash.com/photo-1741825209068-ffb66c82e302?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=100",
+    coverUrl: onePieceCover,
     coverAlt: "One Piece Vol 1 cover",
   },
   {
@@ -38,9 +65,9 @@ const BOOKS = [
     authorSort: "Martin",
     avgRating: 4.45,
     starCount: 5,
-    shelf: "currently-reading" as const,
+    shelf: "currently-reading",
     dateAdded: "Jun 08, 2026",
-    coverUrl: "https://images.unsplash.com/photo-1515255384510-23e8b6a6ca3c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=100",
+    coverUrl: gameOfThronesCover,
     coverAlt: "A Game of Thrones cover",
   },
   {
@@ -51,18 +78,108 @@ const BOOKS = [
     authorSort: "Kubo",
     avgRating: 4.27,
     starCount: 3,
-    shelf: "read" as const,
+    shelf: "read",
     dateAdded: "Jun 08, 2026",
-    coverUrl: "https://images.unsplash.com/photo-1709675577966-6231e5a2ac43?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=100",
+    coverUrl: bleachCover,
     coverAlt: "Bleach Vol 1 cover",
   },
+  {
+    id: 5,
+    title: "Fairy Tail, Vol. 01",
+    titleSort: "Fairy Tail, Vol. 01",
+    author: "Mashima, Hiro",
+    authorSort: "Mashima",
+    avgRating: 4.32,
+    starCount: 4,
+    shelf: "read",
+    dateAdded: "Jun 09, 2026",
+    coverUrl: fairyTailCover,
+    coverAlt: "Fairy Tail Vol 01 cover",
+  },
+  {
+    id: 6,
+    title: "Diary of a Wimpy Kid (Diary of a Wimpy Kid, #1)",
+    titleSort: "Diary of a Wimpy Kid (Diary of a Wimpy Kid, #1)",
+    author: "Kinney, Jeff",
+    authorSort: "Kinney",
+    avgRating: 3.98,
+    starCount: 4,
+    shelf: "read",
+    dateAdded: "Jun 09, 2026",
+    coverUrl: wimpyKidCover,
+    coverAlt: "Diary of a Wimpy Kid cover",
+  },
+  {
+    id: 7,
+    title: "The Lightning Thief (Percy Jackson and the Olympians, #1)",
+    titleSort: "Lightning Thief, The (Percy Jackson and the Olympians, #1)",
+    author: "Riordan, Rick",
+    authorSort: "Riordan",
+    avgRating: 4.31,
+    starCount: 0,
+    shelf: "want-to-read",
+    dateAdded: "Jun 09, 2026",
+    coverUrl: lightningThiefCover,
+    coverAlt: "The Lightning Thief cover",
+  },
+  {
+    id: 8,
+    title: "Attack on Titan, Vol. 1",
+    titleSort: "Attack on Titan, Vol. 1",
+    author: "Isayama, Hajime",
+    authorSort: "Isayama",
+    avgRating: 4.48,
+    starCount: 5,
+    shelf: "read",
+    dateAdded: "Jun 10, 2026",
+    coverUrl: attackOnTitanCover,
+    coverAlt: "Attack on Titan Vol 1 cover",
+  },
+  {
+    id: 9,
+    title: "Batman, Volume 1: The Court of Owls",
+    titleSort: "Batman, Volume 1: The Court of Owls",
+    author: "Snyder, Scott",
+    authorSort: "Snyder",
+    avgRating: 4.33,
+    starCount: 0,
+    shelf: "want-to-read",
+    dateAdded: "Jun 10, 2026",
+    coverUrl: batmanCover,
+    coverAlt: "Batman Volume 1 cover",
+  },
+  {
+    id: 10,
+    title: "My Hero Academia, Vol. 1",
+    titleSort: "My Hero Academia, Vol. 1",
+    author: "Horikoshi, Kohei",
+    authorSort: "Horikoshi",
+    avgRating: 4.29,
+    starCount: 4,
+    shelf: "read",
+    dateAdded: "Jun 10, 2026",
+    coverUrl: myHeroAcademiaCover,
+    coverAlt: "My Hero Academia Vol 1 cover",
+  },
+  {
+    id: 11,
+    title: "The Amazing Spider-Man: Birth of Venom (Marvel Ultimate Graphic Novels Collection #9)",
+    titleSort: "Amazing Spider-Man: Birth of Venom, The (Marvel Ultimate Graphic Novels Collection #9)",
+    author: "Michelinie, David",
+    authorSort: "Michelinie",
+    avgRating: 4.05,
+    starCount: 0,
+    shelf: "want-to-read",
+    dateAdded: "Jun 09, 2026",
+    coverUrl: spiderManCover,
+    coverAlt: "The Amazing Spider-Man: Birth of Venom cover",
+  }
 ];
 
-type Shelf = "all" | "want-to-read" | "currently-reading" | "read";
-type SortField = "title" | "author" | null;
+type Shelf = "all" | "want-to-read" | "currently-reading" | "read" | "did-not-finish";
+type SortField = "title" | "author" | "avgRating" | "rating" | "dateRead" | "dateAdded" | null;
 type SortDir = "asc" | "desc";
 
-// Displays N filled stars + (5-N) empty stars — no partial stars
 function StarDisplay({ filled }: { filled: number }) {
   return (
     <span style={{ display: "inline-flex", gap: 1 }}>
@@ -73,11 +190,12 @@ function StarDisplay({ filled }: { filled: number }) {
   );
 }
 
-function ShelfLabel({ shelf }: { shelf: "read" | "currently-reading" | "want-to-read" }) {
+function ShelfLabel({ shelf }: { shelf: BookShelf }) {
   const map = {
     "read": { label: "read", color: "#00635d" },
     "currently-reading": { label: "currently-reading", color: "#00635d" },
     "want-to-read": { label: "want to read", color: "#00635d" },
+    "did-not-finish": { label: "did not finish", color: "#00635d" },
   };
   const s = map[shelf];
   return (
@@ -130,6 +248,22 @@ export default function App() {
           ? a.authorSort.localeCompare(b.authorSort)
           : b.authorSort.localeCompare(a.authorSort)
       );
+    } else if (sortField === "avgRating") {
+      rows.sort((a, b) =>
+        sortDir === "asc" ? a.avgRating - b.avgRating : b.avgRating - a.avgRating
+      );
+    } else if (sortField === "rating") {
+      rows.sort((a, b) =>
+        sortDir === "asc" ? a.starCount - b.starCount : b.starCount - a.starCount
+      );
+    } else if (sortField === "dateAdded") {
+      rows.sort((a, b) => {
+        const timeA = new Date(a.dateAdded).getTime();
+        const timeB = new Date(b.dateAdded).getTime();
+        return sortDir === "asc" ? timeA - timeB : timeB - timeA;
+      });
+    } else if (sortField === "dateRead") {
+      rows.sort((a, b) => (sortDir === "asc" ? a.id - b.id : b.id - a.id));
     }
 
     return rows;
@@ -140,6 +274,7 @@ export default function App() {
     "want-to-read": BOOKS.filter((b) => b.shelf === "want-to-read").length,
     "currently-reading": BOOKS.filter((b) => b.shelf === "currently-reading").length,
     read: BOOKS.filter((b) => b.shelf === "read").length,
+    "did-not-finish": BOOKS.filter((b) => b.shelf === "did-not-finish").length,
   };
 
   const iconCircle: React.CSSProperties = {
@@ -170,6 +305,14 @@ export default function App() {
     verticalAlign: "top",
   };
 
+  const bookLinkStyle: React.CSSProperties = {
+    fontFamily: "Arial, sans-serif",
+    fontSize: 13,
+    color: "#00635d",
+    textDecoration: "none",
+    cursor: "pointer",
+  };
+
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <span style={{ color: "#aaa", fontSize: 11, marginLeft: 2 }}>↕</span>;
     return sortDir === "asc"
@@ -179,113 +322,116 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, 'Times New Roman', serif" }}>
+      
+      {/* Dynamic style block to control title/author hover decorations globally */}
+      <style>{`
+        .gr-book-link:hover {
+          text-decoration: underline !important;
+        }
+      `}</style>
 
-      {/* TOP NAV — beige background only */}
+      {/* TOP NAV */}
       <nav style={{
         background: "#f4f1ea",
         borderBottom: "1px solid #d6cfc4",
-        padding: "0 24px",
+        padding: "0 20px",
         display: "flex",
-        alignItems: "center",
-        height: 44,
-        gap: 0,
+        justifyContent: "center",
+        height: 50,
       }}>
-        {/* Logo — Playfair Display serif, upright bold, matches Goodreads wordmark style */}
-        <div style={{ marginRight: 20, flexShrink: 0 }}>
-          <span style={{
-            fontFamily: "'Playfair Display', Georgia, serif",
-            fontSize: 24,
-            fontWeight: 400,
-            color: "#372213",
-            letterSpacing: "0px",
-            fontStyle: "normal",
-          }}>
-            goodreads
-          </span>
-        </div>
-
-        {/* Nav links */}
-        <div style={{ display: "flex", alignItems: "center", gap: 0, flex: 1 }}>
-          {["Home", "My Books"].map((label) => (
-            <a
-              key={label}
-              href="#"
-              onClick={(e) => e.preventDefault()}
-              style={{
-                color: "#372213",
-                fontSize: 13,
-                padding: "0 12px",
-                height: 44,
-                display: "flex",
-                alignItems: "center",
-                textDecoration: "none",
-                borderBottom: label === "My Books" ? "2px solid #372213" : "2px solid transparent",
-                fontFamily: "Arial, sans-serif",
-              }}
-            >
-              {label}
-            </a>
-          ))}
-          <a href="#" onClick={(e) => e.preventDefault()} style={{ color: "#372213", fontSize: 13, padding: "0 12px", height: 44, display: "flex", alignItems: "center", textDecoration: "none", gap: 3, fontFamily: "Arial, sans-serif" }}>
-            Browse <ChevronDownNav size={12} />
-          </a>
-          <a href="#" onClick={(e) => e.preventDefault()} style={{ color: "#372213", fontSize: 13, padding: "0 12px", height: 44, display: "flex", alignItems: "center", textDecoration: "none", gap: 3, fontFamily: "Arial, sans-serif" }}>
-            Community <ChevronDownNav size={12} />
-          </a>
-        </div>
-
-        {/* Search bar — wide, like Goodreads */}
-        <div style={{ position: "relative", marginRight: 10, flex: "0 0 340px" }}>
-          <input
-            type="text"
-            placeholder="Search books"
-            style={{
-              border: "1px solid #c9bfb5",
-              borderRadius: 3,
-              padding: "5px 34px 5px 10px",
-              fontSize: 13,
-              width: "100%",
-              background: "#fff",
+        {/* Centered container wrapping all elements sequentially with no dead-space dividers */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          width: "100%",
+          maxWidth: 960,
+          height: "100%",
+          gap: 16,
+        }}>
+          {/* Logo - Shifted left smoothly using relative positioning so "Home" stays perfectly anchored */}
+          <div style={{ marginRight: 8, flexShrink: 0, position: "relative", left: -16 }}>
+            <span style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: 26,
+              fontWeight: 700,
               color: "#372213",
-              fontFamily: "Arial, sans-serif",
-              outline: "none",
-              boxSizing: "border-box",
-            }}
-          />
-          <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 34, background: "#e8e1d9", borderLeft: "1px solid #c9bfb5", borderRadius: "0 3px 3px 0", display: "flex", alignItems: "center", justifyContent: "center", cursor: "default" }}>
-            <Search size={14} color="#5d4e3c" />
+              letterSpacing: "-0.5px",
+              fontStyle: "normal",
+            }}>
+              goodreads
+            </span>
           </div>
-        </div>
 
-        {/* Right icons — beige circles, no username */}
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          {/* Bell */}
-          <div style={iconCircle}><Bell size={14} color="#fff" strokeWidth={1.8} /></div>
-          {/* Messaging — speech bubble style */}
-          <div style={iconCircle}><MessageCircle size={14} color="#fff" strokeWidth={1.8} /></div>
-          {/* Mail */}
-          <div style={iconCircle}><Mail size={14} color="#fff" strokeWidth={1.8} /></div>
-          {/* Friends */}
-          <div style={iconCircle}><Users size={14} color="#fff" strokeWidth={1.8} /></div>
-          {/* Profile — lighter circle to indicate logged-in user */}
-          <div style={{ ...iconCircle, background: "#c9bfb5" }}>
-            {/* person reading silhouette approximated with SVG */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="8" r="4" fill="#fff" />
-              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="#fff" />
-            </svg>
+          {/* Links Cluster with precise close formatting */}
+          <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+            {["Home", "My Books"].map((label) => (
+              <a
+                key={label}
+                href="#"
+                onClick={(e) => e.preventDefault()}
+                style={{
+                  color: "#372213",
+                  fontSize: 15,
+                  textDecoration: "none",
+                  fontWeight: "normal",
+                  whiteSpace: "nowrap",
+                  fontFamily: '"Lato", "Helvetica Neue", Helvetica, Arial, sans-serif',
+                }}
+              >
+                {label}
+              </a>
+            ))}
+            <a href="#" onClick={(e) => e.preventDefault()} style={{ color: "#372213", fontSize: 15, textDecoration: "none", display: "flex", alignItems: "center", gap: 3, whiteSpace: "nowrap", fontFamily: '"Lato", "Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+              Browse <ChevronDownNav size={12} strokeWidth={2.5} style={{ color: "#555" }} />
+            </a>
+            <a href="#" onClick={(e) => e.preventDefault()} style={{ color: "#372213", fontSize: 15, textDecoration: "none", display: "flex", alignItems: "center", gap: 3, whiteSpace: "nowrap", fontFamily: '"Lato", "Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+              Community <ChevronDownNav size={12} strokeWidth={2.5} style={{ color: "#555" }} />
+            </a>
+          </div>
+
+          {/* Flexible Search Container that fills the space between links and profile action items */}
+          <div style={{ position: "relative", display: "flex", alignItems: "center", flexGrow: 1, minWidth: 200, marginLeft: 6 }}>
+            <input
+              type="text"
+              placeholder="Search books"
+              style={{
+                border: "1px solid #e0dbd1",
+                borderRadius: "3px",
+                padding: "6px 36px 6px 12px",
+                fontSize: 14,
+                width: "100%",
+                background: "#fff",
+                color: "#372213",
+                fontFamily: "Arial, sans-serif",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+            <Search size={18} color="#000" strokeWidth={2.5} style={{ position: "absolute", right: 10, cursor: "pointer" }} />
+          </div>
+
+          {/* Icons Group sitting cleanly on the right border margin */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            <div style={iconCircle}><Bell size={15} color="#fff" strokeWidth={2} /></div>
+            <div style={iconCircle}><MessageCircle size={15} color="#fff" strokeWidth={2} /></div>
+            <div style={iconCircle}><Mail size={15} color="#fff" strokeWidth={2} /></div>
+            <div style={iconCircle}><Users size={15} color="#fff" strokeWidth={2} /></div>
+            <div style={{ ...iconCircle, background: "#c9bfb5" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="8" r="4" fill="#fff" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="#fff" />
+              </svg>
+            </div>
           </div>
         </div>
       </nav>
 
       {/* PAGE BODY */}
-      <div style={{ display: "flex", maxWidth: 1100, margin: "0 auto", padding: "16px 12px" }}>
+      <div style={{ display: "flex", maxWidth: 960, margin: "0 auto", padding: "16px 12px" }}>
 
         {/* LEFT SIDEBAR */}
         <aside style={{ width: 168, flexShrink: 0, marginRight: 24 }}>
-
-          {/* "My Books" heading sits above Bookshelves, left-aligned */}
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1a7b6e", margin: "0 0 12px 0", fontFamily: "Arial, sans-serif" }}>My Books</h1>
+          <h1 style={{ fontSize: 26, fontWeight: "normal", color: "#00635d", margin: "0 0 12px 0", fontFamily: "Georgia, serif" }}>My Books</h1>
 
           {/* Bookshelves */}
           <div style={{ marginBottom: 16 }}>
@@ -298,6 +444,7 @@ export default function App() {
               ["want-to-read", `Want to Read (${shelfCounts["want-to-read"]})`],
               ["currently-reading", `Currently Reading (${shelfCounts["currently-reading"]})`],
               ["read", `Read (${shelfCounts.read})`],
+              ["did-not-finish", `Did Not Finish (${shelfCounts["did-not-finish"]})`],
             ] as [Shelf, string][]).map(([shelf, label]) => (
               <div key={shelf} style={{ marginBottom: 1 }}>
                 <a
@@ -317,21 +464,24 @@ export default function App() {
                 </a>
               </div>
             ))}
-            <div style={{ marginTop: 8 }}>
+            
+            <hr style={{ border: "none", borderTop: "1px solid #d6cfc4", margin: "10px 0 6px 0" }} />
+
+            <div>
               <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 12, color: "#00635d", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>all (0)</a>
             </div>
-            <div style={{ marginTop: 6 }}>
+            <div style={{ marginTop: 8 }}>
               <button style={{
                 fontSize: 11,
-                color: "#555",
-                border: "1px solid #c9bfb5",
-                background: "#fff",
-                borderRadius: 3,
-                padding: "2px 8px",
+                color: "#333",
+                border: "1px solid #d3c9bc",
+                background: "#f4f1ea",
+                borderRadius: 4,
+                padding: "3px 10px",
                 cursor: "default",
                 fontFamily: "Arial, sans-serif",
               }}>
-                + Add shelf
+                Add shelf
               </button>
             </div>
           </div>
@@ -368,12 +518,10 @@ export default function App() {
         </aside>
 
         {/* MAIN CONTENT */}
-        <main style={{ flex: 1, minWidth: 0 }}>
+        <main style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
 
-          {/* Top actions bar — search + Batch Edit / Settings / Stats / Print / view icons, with separator below */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", paddingBottom: 10, marginBottom: 12, borderBottom: "1px solid #d6cfc4", gap: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {/* Search and add books */}
               <div style={{ position: "relative" }}>
                 <input
                   type="text"
@@ -397,7 +545,6 @@ export default function App() {
               {["Batch Edit", "Settings", "Stats", "Print"].map((btn) => (
                 <a key={btn} href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 12, color: "#00635d", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>{btn}</a>
               ))}
-              {/* View mode icons */}
               <div style={{ display: "flex", gap: 2 }}>
                 <div style={{ width: 22, height: 22, border: "1px solid #c9bfb5", background: "#e8e1d9", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 2, cursor: "default" }}>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2,5px)", gap: 1 }}>
@@ -413,7 +560,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* TABLE — no outer border, no column dividers, only horizontal row lines */}
           <table style={{ width: "100%", borderCollapse: "collapse", background: "#fff", fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid #d6cfc4" }}>
@@ -424,12 +570,20 @@ export default function App() {
                 <th style={{ ...thStyle, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("author")}>
                   author <SortIcon field="author" />
                 </th>
-                <th style={thStyle}>avg<br />rating</th>
-                <th style={thStyle}>rating</th>
+                <th style={{ ...thStyle, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("avgRating")}>
+                  avg<br />rating <SortIcon field="avgRating" />
+                </th>
+                <th style={{ ...thStyle, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("rating")}>
+                  rating <SortIcon field="rating" />
+                </th>
                 <th style={thStyle}>shelves</th>
                 <th style={thStyle}>review</th>
-                <th style={thStyle}>date<br />read</th>
-                <th style={thStyle}>date<br />added</th>
+                <th style={{ ...thStyle, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("dateRead")}>
+                  date<br />read <SortIcon field="dateRead" />
+                </th>
+                <th style={{ ...thStyle, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("dateAdded")}>
+                  date<br />added <SortIcon field="dateAdded" />
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -446,10 +600,24 @@ export default function App() {
                       <img src={book.coverUrl} alt={book.coverAlt} style={{ width: 40, height: 56, objectFit: "cover", display: "block", border: "1px solid #d6cfc4" }} />
                     </td>
                     <td style={{ ...tdStyle, maxWidth: 200 }}>
-                      <div style={{ fontFamily: "Arial, sans-serif", fontSize: 13, color: "#372213", fontWeight: 600, lineHeight: 1.3 }}>{book.title}</div>
+                      <a 
+                        href="#" 
+                        onClick={(e) => e.preventDefault()} 
+                        className="gr-book-link" 
+                        style={{ ...bookLinkStyle, fontWeight: 700, lineHeight: 1.3 }}
+                      >
+                        {book.title}
+                      </a>
                     </td>
                     <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                      <span style={{ fontFamily: "Arial, sans-serif", fontSize: 13, color: "#372213" }}>{book.author}</span>
+                      <a 
+                        href="#" 
+                        onClick={(e) => e.preventDefault()} 
+                        className="gr-book-link" 
+                        style={bookLinkStyle}
+                      >
+                        {book.author}
+                      </a>
                     </td>
                     <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                       <span style={{ fontFamily: "Arial, sans-serif", fontSize: 13, color: "#372213" }}>{book.avgRating.toFixed(2)}</span>
@@ -484,7 +652,6 @@ export default function App() {
             </tbody>
           </table>
 
-          {/* Footer info */}
           <div style={{ marginTop: 10, fontSize: 11, color: "#888", fontFamily: "Arial, sans-serif" }}>
             Showing {filtered.length} of {BOOKS.length} book{BOOKS.length !== 1 ? "s" : ""}
           </div>

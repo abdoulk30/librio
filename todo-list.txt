@@ -1,3 +1,0 @@
-1. Fix the separator line under the second search bar so it reaches all the way to the left under "My Books".
-2. Make the avg rating, rating, review, date read, and date added sort options functional.
-3. Add more books to the bookshelf.
