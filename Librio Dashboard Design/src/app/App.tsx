@@ -161,19 +161,6 @@ const BOOKS: Book[] = [
     coverUrl: myHeroAcademiaCover,
     coverAlt: "My Hero Academia Vol 1 cover",
   },
-  {
-    id: 11,
-    title: "The Amazing Spider-Man: Birth of Venom (Marvel Ultimate Graphic Novels Collection #9)",
-    titleSort: "Amazing Spider-Man: Birth of Venom, The (Marvel Ultimate Graphic Novels Collection #9)",
-    author: "Michelinie, David",
-    authorSort: "Michelinie",
-    avgRating: 4.05,
-    starCount: 0,
-    shelf: "want-to-read",
-    dateAdded: "Jun 09, 2026",
-    coverUrl: spiderManCover,
-    coverAlt: "The Amazing Spider-Man: Birth of Venom cover",
-  }
 ];
 
 type Shelf = "all" | "want-to-read" | "currently-reading" | "read" | "did-not-finish";
