@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import { Search, Bell, Mail, Users, ChevronDown as ChevronDownNav, MessageCircle } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Search, Bell, Mail, Users, ChevronDown as ChevronDownNav, MessageCircle, Sun, Moon } from "lucide-react";
 import narutoCover from "../imports/naruto.png";
 import onePieceCover from "../imports/onepiece.png";
 import gameOfThronesCover from "../imports/agot.png";
@@ -10,7 +10,6 @@ import lightningThiefCover from "../imports/percy.png";
 import attackOnTitanCover from "../imports/aot.png";
 import batmanCover from "../imports/batman.png";
 import myHeroAcademiaCover from "../imports/mha.png";
-import spiderManCover from "../imports/spiderman.png";
 
 {/* MARKER-MAKE-KIT-INVOKED */}
 
@@ -30,7 +29,7 @@ interface Book {
   coverAlt: string;
 }
 
-const BOOKS: Book[] = [
+const INITIAL_BOOKS: Book[] = [
   {
     id: 1,
     title: "Naruto, Vol. 1: Uzumaki Naruto",
@@ -167,36 +166,110 @@ type Shelf = "all" | "want-to-read" | "currently-reading" | "read" | "did-not-fi
 type SortField = "title" | "author" | "avgRating" | "rating" | "dateRead" | "dateAdded" | null;
 type SortDir = "asc" | "desc";
 
-function StarDisplay({ filled }: { filled: number }) {
+function InteractiveStarRating({ 
+  bookId, 
+  currentRating, 
+  onRate 
+}: { 
+  bookId: number; 
+  currentRating: number; 
+  onRate: (id: number, rating: number) => void; 
+}) {
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
+
   return (
-    <span style={{ display: "inline-flex", gap: 1 }}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} style={{ color: i < filled ? "#e07b39" : "#d4c9bc", fontSize: 16, lineHeight: 1 }}>★</span>
-      ))}
+    <span 
+      style={{ display: "inline-flex", gap: 3, whiteSpace: "nowrap" }}
+      onMouseLeave={() => setHoverRating(null)}
+    >
+      {Array.from({ length: 5 }).map((_, i) => {
+        const starIndex = i + 1;
+        const isFilled = hoverRating !== null ? starIndex <= hoverRating : starIndex <= currentRating;
+        
+        return (
+          <button
+            key={i}
+            onClick={() => onRate(bookId, starIndex)}
+            onMouseEnter={() => setHoverRating(starIndex)}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: isFilled ? "#e07b39" : "var(--star-empty)",
+              fontSize: 19,
+              lineHeight: 1,
+              transition: "transform 0.1s ease, color 0.1s ease",
+            }}
+            className="gr-star-icon"
+          >
+            ★
+          </button>
+        );
+      })}
     </span>
   );
 }
 
 function ShelfLabel({ shelf }: { shelf: BookShelf }) {
   const map = {
-    "read": { label: "read", color: "#00635d" },
-    "currently-reading": { label: "currently-reading", color: "#00635d" },
-    "want-to-read": { label: "want to read", color: "#00635d" },
-    "did-not-finish": { label: "did not finish", color: "#00635d" },
+    "read": { label: "read" },
+    "currently-reading": { label: "currently-reading" },
+    "want-to-read": { label: "want to read" },
+    "did-not-finish": { label: "did not finish" },
   };
   const s = map[shelf];
   return (
-    <span style={{ fontSize: 13, color: s.color, fontFamily: "Arial, sans-serif" }}>
+    <span style={{ fontSize: 13, color: "var(--link-color)", fontFamily: "Arial, sans-serif", fontWeight: 500, whiteSpace: "nowrap" }}>
       {s.label}
     </span>
   );
 }
 
 export default function App() {
+  const [books, setBooks] = useState<Book[]>(() => {
+    try {
+      const saved = localStorage.getItem("librio-books");
+      return saved ? JSON.parse(saved) : INITIAL_BOOKS;
+    } catch (e) {
+      console.error("Failed to load local books schema:", e);
+      return INITIAL_BOOKS;
+    }
+  });
+
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try {
+      const saved = localStorage.getItem("librio-theme");
+      return (saved as "light" | "dark") || "light";
+    } catch (e) {
+      return "light";
+    }
+  });
+
   const [searchQuery, setSearchQuery] = useState("");
   const [activeShelf, setActiveShelf] = useState<Shelf>("all");
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("librio-books", JSON.stringify(books));
+    } catch (e) {}
+  }, [books]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("librio-theme", theme);
+    } catch (e) {}
+  }, [theme]);
+
+  const handleRateBook = (id: number, newRating: number) => {
+    setBooks(prevBooks => 
+      prevBooks.map(book => 
+        book.id === id ? { ...book, starCount: book.starCount === newRating ? 0 : newRating } : book
+      )
+    );
+  };
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -208,7 +281,7 @@ export default function App() {
   };
 
   const filtered = useMemo(() => {
-    let rows = [...BOOKS];
+    let rows = [...books];
 
     if (activeShelf !== "all") {
       rows = rows.filter((b) => b.shelf === activeShelf);
@@ -225,15 +298,11 @@ export default function App() {
 
     if (sortField === "title") {
       rows.sort((a, b) =>
-        sortDir === "asc"
-          ? a.titleSort.localeCompare(b.titleSort)
-          : b.titleSort.localeCompare(a.titleSort)
+        sortDir === "asc" ? a.titleSort.localeCompare(b.titleSort) : b.titleSort.localeCompare(a.titleSort)
       );
     } else if (sortField === "author") {
       rows.sort((a, b) =>
-        sortDir === "asc"
-          ? a.authorSort.localeCompare(b.authorSort)
-          : b.authorSort.localeCompare(a.authorSort)
+        sortDir === "asc" ? a.authorSort.localeCompare(b.authorSort) : b.authorSort.localeCompare(a.authorSort)
       );
     } else if (sortField === "avgRating") {
       rows.sort((a, b) =>
@@ -254,48 +323,50 @@ export default function App() {
     }
 
     return rows;
-  }, [searchQuery, activeShelf, sortField, sortDir]);
+  }, [books, searchQuery, activeShelf, sortField, sortDir]);
 
   const shelfCounts = {
-    all: BOOKS.length,
-    "want-to-read": BOOKS.filter((b) => b.shelf === "want-to-read").length,
-    "currently-reading": BOOKS.filter((b) => b.shelf === "currently-reading").length,
-    read: BOOKS.filter((b) => b.shelf === "read").length,
-    "did-not-finish": BOOKS.filter((b) => b.shelf === "did-not-finish").length,
+    all: books.length,
+    "want-to-read": books.filter((b) => b.shelf === "want-to-read").length,
+    "currently-reading": books.filter((b) => b.shelf === "currently-reading").length,
+    read: books.filter((b) => b.shelf === "read").length,
+    "did-not-finish": books.filter((b) => b.shelf === "did-not-finish").length,
   };
 
   const iconCircle: React.CSSProperties = {
     width: 32,
     height: 32,
     borderRadius: "50%",
-    background: "#c9bfb5",
+    background: "var(--icon-circle-bg)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     cursor: "default",
     flexShrink: 0,
+    transition: "background-color 0.2s ease"
   };
 
   const thStyle: React.CSSProperties = {
-    padding: "6px 10px",
+    padding: "14px 16px",
     textAlign: "left",
     fontWeight: 700,
-    color: "#372213",
+    color: "var(--text-main)",
     fontFamily: "Arial, sans-serif",
     fontSize: 12,
     whiteSpace: "nowrap",
-    background: "transparent",
+    background: "var(--table-header-bg)",
+    transition: "all 0.2s ease"
   };
 
   const tdStyle: React.CSSProperties = {
-    padding: "10px 10px",
+    padding: "16px 16px",
     verticalAlign: "top",
   };
 
   const bookLinkStyle: React.CSSProperties = {
     fontFamily: "Arial, sans-serif",
-    fontSize: 13,
-    color: "#00635d",
+    fontSize: 14,
+    color: "var(--link-color)",
     textDecoration: "none",
     cursor: "pointer",
   };
@@ -303,64 +374,162 @@ export default function App() {
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <span style={{ color: "#aaa", fontSize: 11, marginLeft: 2 }}>↕</span>;
     return sortDir === "asc"
-      ? <span style={{ color: "#372213", fontSize: 11, marginLeft: 2 }}>↑</span>
-      : <span style={{ color: "#372213", fontSize: 11, marginLeft: 2 }}>↓</span>;
+      ? <span style={{ color: "var(--text-main)", fontSize: 11, marginLeft: 2 }}>↑</span>
+      : <span style={{ color: "var(--text-main)", fontSize: 11, marginLeft: 2 }}>↓</span>;
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, 'Times New Roman', serif" }}>
+    <div className={`theme-${theme}`} style={{ minHeight: "100vh", background: "var(--bg-main)", color: "var(--text-main)", fontFamily: "Georgia, 'Times New Roman', serif", transition: "background-color 0.2s ease, color 0.2s ease" }}>
       
-      {/* Dynamic style block to control title/author hover decorations globally */}
       <style>{`
+        .theme-light {
+          --bg-main: #ffffff;
+          --text-main: #372213;
+          --text-muted: #665246;
+          --nav-bg: #f4f1ea;
+          --border-color: #d6cfc4;
+          --table-bg: #ffffff;
+          --table-header-bg: #f9f8f6;
+          --link-color: #00635d;
+          --secondary-text: #888888;
+          --row-hover-bg: #fcfbfa;
+          --icon-circle-bg: #c9bfb5;
+          --sidebar-btn-hover: #eae4d8;
+          --sidebar-btn-active: #dfd5c4;
+          --star-empty: #d4c9bc;
+          --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+          --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        .theme-dark {
+          --bg-main: #121212;
+          --text-main: #f5f2eb;
+          --text-muted: #b5a89e;
+          --nav-bg: #1c1b18;
+          --border-color: #33302a;
+          --table-bg: #1a1917;
+          --table-header-bg: #21201d;
+          --link-color: #4db6ac;
+          --secondary-text: #999999;
+          --row-hover-bg: #262421;
+          --icon-circle-bg: #403c37;
+          --sidebar-btn-hover: #2d2a25;
+          --sidebar-btn-active: #3d3932;
+          --star-empty: #403c37;
+          --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+          --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
         .gr-book-link:hover {
           text-decoration: underline !important;
+        }
+
+        .gr-sidebar-btn {
+          display: block;
+          font-size: 13px;
+          text-decoration: none;
+          padding: 8px 14px;
+          border-radius: 6px;
+          font-family: Arial, sans-serif;
+          margin-bottom: 4px;
+          transition: all 0.15s ease;
+          border: 1px solid transparent;
+        }
+        .gr-sidebar-btn:hover {
+          background-color: var(--sidebar-btn-hover);
+        }
+        .gr-sidebar-btn-active {
+          background-color: var(--sidebar-btn-active) !important;
+          border-color: var(--border-color);
+        }
+
+        .gr-action-pill {
+          font-size: 11px !important;
+          text-decoration: none;
+          font-family: Arial, sans-serif;
+          padding: 4px 10px;
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          background: var(--nav-bg);
+          color: var(--link-color) !important;
+          transition: all 0.15s ease;
+          box-shadow: var(--shadow-sm);
+          white-space: nowrap;
+          display: inline-block;
+        }
+        .gr-action-pill:hover {
+          background: var(--sidebar-btn-hover);
+          transform: translateY(-0.5px);
+        }
+
+        .gr-modern-table {
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+          background: var(--table-bg);
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          box-shadow: var(--shadow-md);
+          overflow: hidden;
+          transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .gr-table-row {
+          transition: background-color 0.15s ease;
+        }
+        .gr-table-row:hover {
+          background-color: var(--row-hover-bg);
+        }
+        .gr-table-row:not(:last-child) td {
+          border-bottom: 1px solid var(--border-color);
+        }
+
+        .gr-star-icon:hover {
+          transform: scale(1.2);
         }
       `}</style>
 
       {/* TOP NAV */}
       <nav style={{
-        background: "#f4f1ea",
-        borderBottom: "1px solid #d6cfc4",
-        padding: "0 20px",
+        background: "var(--nav-bg)",
+        borderBottom: "1px solid var(--border-color)",
+        padding: "0 32px",
         display: "flex",
         justifyContent: "center",
-        height: 50,
+        height: 52,
+        transition: "all 0.2s ease"
       }}>
-        {/* Centered container wrapping all elements sequentially with no dead-space dividers */}
         <div style={{
           display: "flex",
           alignItems: "center",
           width: "100%",
-          maxWidth: 960,
+          maxWidth: 1440,
           height: "100%",
-          gap: 16,
+          gap: 20,
         }}>
-          {/* Logo - Shifted left smoothly using relative positioning so "Home" stays perfectly anchored */}
-          <div style={{ marginRight: 8, flexShrink: 0, position: "relative", left: -16 }}>
+          {/* Logo */}
+          <div style={{ marginRight: 8, flexShrink: 0 }}>
             <span style={{
               fontFamily: "'Playfair Display', Georgia, serif",
               fontSize: 26,
               fontWeight: 700,
-              color: "#372213",
+              color: "var(--text-main)",
               letterSpacing: "-0.5px",
-              fontStyle: "normal",
             }}>
               goodreads
             </span>
           </div>
 
-          {/* Links Cluster with precise close formatting */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+          {/* Links Cluster */}
+          <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
             {["Home", "My Books"].map((label) => (
               <a
                 key={label}
                 href="#"
                 onClick={(e) => e.preventDefault()}
                 style={{
-                  color: "#372213",
+                  color: "var(--text-main)",
                   fontSize: 15,
                   textDecoration: "none",
-                  fontWeight: "normal",
+                  fontWeight: label === "My Books" ? "bold" : "normal",
                   whiteSpace: "nowrap",
                   fontFamily: '"Lato", "Helvetica Neue", Helvetica, Arial, sans-serif',
                 }}
@@ -368,63 +537,71 @@ export default function App() {
                 {label}
               </a>
             ))}
-            <a href="#" onClick={(e) => e.preventDefault()} style={{ color: "#372213", fontSize: 15, textDecoration: "none", display: "flex", alignItems: "center", gap: 3, whiteSpace: "nowrap", fontFamily: '"Lato", "Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-              Browse <ChevronDownNav size={12} strokeWidth={2.5} style={{ color: "#555" }} />
+            <a href="#" onClick={(e) => e.preventDefault()} style={{ color: "var(--text-main)", fontSize: 15, textDecoration: "none", display: "flex", alignItems: "center", gap: 3, whiteSpace: "nowrap", fontFamily: '"Lato", "Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+              Browse <ChevronDownNav size={12} strokeWidth={2.5} style={{ color: "var(--text-muted)" }} />
             </a>
-            <a href="#" onClick={(e) => e.preventDefault()} style={{ color: "#372213", fontSize: 15, textDecoration: "none", display: "flex", alignItems: "center", gap: 3, whiteSpace: "nowrap", fontFamily: '"Lato", "Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-              Community <ChevronDownNav size={12} strokeWidth={2.5} style={{ color: "#555" }} />
+            <a href="#" onClick={(e) => e.preventDefault()} style={{ color: "var(--text-main)", fontSize: 15, textDecoration: "none", display: "flex", alignItems: "center", gap: 3, whiteSpace: "nowrap", fontFamily: '"Lato", "Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+              Community <ChevronDownNav size={12} strokeWidth={2.5} style={{ color: "var(--text-muted)" }} />
             </a>
           </div>
 
-          {/* Flexible Search Container that fills the space between links and profile action items */}
-          <div style={{ position: "relative", display: "flex", alignItems: "center", flexGrow: 1, minWidth: 200, marginLeft: 6 }}>
+          {/* Search Bar Container */}
+          <div style={{ position: "relative", display: "flex", alignItems: "center", flexGrow: 1, minWidth: 260, marginLeft: 10 }}>
             <input
               type="text"
               placeholder="Search books"
               style={{
-                border: "1px solid #e0dbd1",
-                borderRadius: "3px",
-                padding: "6px 36px 6px 12px",
+                border: "1px solid var(--border-color)",
+                borderRadius: "6px",
+                padding: "7px 36px 7px 14px",
                 fontSize: 14,
                 width: "100%",
-                background: "#fff",
-                color: "#372213",
+                background: "var(--bg-main)",
+                color: "var(--text-main)",
                 fontFamily: "Arial, sans-serif",
                 outline: "none",
                 boxSizing: "border-box",
+                transition: "all 0.2s ease"
               }}
             />
-            <Search size={18} color="#000" strokeWidth={2.5} style={{ position: "absolute", right: 10, cursor: "pointer" }} />
+            <Search size={18} color="var(--text-muted)" strokeWidth={2.5} style={{ position: "absolute", right: 12, cursor: "pointer" }} />
           </div>
 
-          {/* Icons Group sitting cleanly on the right border margin */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-            <div style={iconCircle}><Bell size={15} color="#fff" strokeWidth={2} /></div>
-            <div style={iconCircle}><MessageCircle size={15} color="#fff" strokeWidth={2} /></div>
-            <div style={iconCircle}><Mail size={15} color="#fff" strokeWidth={2} /></div>
-            <div style={iconCircle}><Users size={15} color="#fff" strokeWidth={2} /></div>
-            <div style={{ ...iconCircle, background: "#c9bfb5" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="8" r="4" fill="#fff" />
-                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="#fff" />
-              </svg>
-            </div>
+          {/* User actions panel */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <button 
+              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+              style={{
+                ...iconCircle,
+                background: "var(--link-color)",
+                border: "none",
+                cursor: "pointer",
+                boxShadow: "var(--shadow-sm)"
+              }}
+              title={`Switch theme layout`}
+            >
+              {theme === "light" ? <Moon size={15} color="#fff" /> : <Sun size={15} color="#121212" />}
+            </button>
+            <div style={iconCircle}><Bell size={15} color="var(--bg-main)" strokeWidth={2} /></div>
+            <div style={iconCircle}><MessageCircle size={15} color="var(--bg-main)" strokeWidth={2} /></div>
+            <div style={iconCircle}><Mail size={15} color="var(--bg-main)" strokeWidth={2} /></div>
+            <div style={iconCircle}><Users size={15} color="var(--bg-main)" strokeWidth={2} /></div>
           </div>
         </div>
       </nav>
 
-      {/* PAGE BODY */}
-      <div style={{ display: "flex", maxWidth: 960, margin: "0 auto", padding: "16px 12px" }}>
+      {/* PAGE MAIN SECTION CANVAS */}
+      <div style={{ display: "flex", maxWidth: 1440, margin: "0 auto", padding: "32px 24px" }}>
 
-        {/* LEFT SIDEBAR */}
-        <aside style={{ width: 168, flexShrink: 0, marginRight: 24 }}>
-          <h1 style={{ fontSize: 26, fontWeight: "normal", color: "#00635d", margin: "0 0 12px 0", fontFamily: "Georgia, serif" }}>My Books</h1>
+        {/* SIDEBAR CONTAINER */}
+        <aside style={{ width: 210, flexShrink: 0, marginRight: 48 }}>
+          <h1 style={{ fontSize: 28, fontWeight: "normal", color: "var(--link-color)", margin: "0 0 20px 0", fontFamily: "Georgia, serif" }}>My Books</h1>
 
           {/* Bookshelves */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#372213", fontFamily: "Arial, sans-serif" }}>Bookshelves</span>
-              <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 11, color: "#00635d", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>(Edit)</a>
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, paddingLeft: 6 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-main)", fontFamily: "Arial, sans-serif" }}>Bookshelves</span>
+              <a href="#" onClick={(e) => e.preventDefault()} className="gr-action-pill" style={{ fontSize: 10, padding: "2px 6px" }}>(Edit)</a>
             </div>
             {([
               ["all", `All (${shelfCounts.all})`],
@@ -433,82 +610,63 @@ export default function App() {
               ["read", `Read (${shelfCounts.read})`],
               ["did-not-finish", `Did Not Finish (${shelfCounts["did-not-finish"]})`],
             ] as [Shelf, string][]).map(([shelf, label]) => (
-              <div key={shelf} style={{ marginBottom: 1 }}>
-                <a
-                  href="#"
-                  onClick={(e) => { e.preventDefault(); setActiveShelf(shelf); }}
-                  style={{
-                    display: "block",
-                    fontSize: 12,
-                    color: activeShelf === shelf ? "#372213" : shelf === "all" ? "#999" : "#00635d",
-                    fontWeight: activeShelf === shelf ? 700 : 400,
-                    textDecoration: "none",
-                    padding: "1px 0",
-                    fontFamily: "Arial, sans-serif",
-                  }}
-                >
-                  {label}
-                </a>
-              </div>
+              <a
+                key={shelf}
+                href="#"
+                onClick={(e) => { e.preventDefault(); setActiveShelf(shelf); }}
+                className={`gr-sidebar-btn ${activeShelf === shelf ? "gr-sidebar-btn-active" : ""}`}
+                style={{
+                  color: activeShelf === shelf ? "var(--text-main)" : "var(--link-color)",
+                  fontWeight: activeShelf === shelf ? 700 : 400,
+                }}
+              >
+                {label}
+              </a>
             ))}
             
-            <hr style={{ border: "none", borderTop: "1px solid #d6cfc4", margin: "10px 0 6px 0" }} />
+            <hr style={{ border: "none", borderTop: "1px solid var(--border-color)", margin: "14px 0 10px 0" }} />
 
-            <div>
-              <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 12, color: "#00635d", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>all (0)</a>
+            <div style={{ paddingLeft: 14 }}>
+              <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 13, color: "var(--link-color)", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>all (0)</a>
             </div>
-            <div style={{ marginTop: 8 }}>
-              <button style={{
-                fontSize: 11,
-                color: "#333",
-                border: "1px solid #d3c9bc",
-                background: "#f4f1ea",
-                borderRadius: 4,
-                padding: "3px 10px",
-                cursor: "default",
-                fontFamily: "Arial, sans-serif",
-              }}>
-                Add shelf
+            <div style={{ marginTop: 12, paddingLeft: 14 }}>
+              <button className="gr-action-pill" style={{ cursor: "pointer", fontWeight: 500 }}>
+                + Add shelf
               </button>
             </div>
           </div>
 
-          {/* Your reading activity */}
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#372213", marginBottom: 5, fontFamily: "Arial, sans-serif" }}>Your reading activity</div>
+          {/* Activity Logs */}
+          <div style={{ marginBottom: 20, paddingLeft: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-main)", marginBottom: 8, fontFamily: "Arial, sans-serif" }}>Your reading activity</div>
             {["Review Drafts", "Kindle Notes & Highlights", "Reading Challenge", "Year in Books", "Reading stats"].map((item) => (
-              <div key={item} style={{ marginBottom: 1 }}>
-                <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 12, color: "#00635d", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>{item}</a>
-              </div>
+              <a key={item} href="#" onClick={(e) => e.preventDefault()} className="gr-sidebar-btn" style={{ color: "var(--link-color)" }}>{item}</a>
             ))}
           </div>
 
-          {/* Add books */}
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#372213", marginBottom: 5, fontFamily: "Arial, sans-serif" }}>Add books</div>
+          {/* Discovery Links */}
+          <div style={{ marginBottom: 20, paddingLeft: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-main)", marginBottom: 8, fontFamily: "Arial, sans-serif" }}>Add books</div>
             {["Amazon book purchases", "Recommendations", "Explore"].map((item) => (
-              <div key={item} style={{ marginBottom: 1 }}>
-                <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 12, color: "#00635d", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>{item}</a>
-              </div>
+              <a key={item} href="#" onClick={(e) => e.preventDefault()} className="gr-sidebar-btn" style={{ color: "var(--link-color)" }}>{item}</a>
             ))}
           </div>
 
-          {/* Tools */}
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#372213", marginBottom: 5, fontFamily: "Arial, sans-serif" }}>Tools</div>
+          {/* Maintenance Panels */}
+          <div style={{ paddingLeft: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-main)", marginBottom: 8, fontFamily: "Arial, sans-serif" }}>Tools</div>
             {["Find duplicates", "Widgets", "Import and export"].map((item) => (
-              <div key={item} style={{ marginBottom: 1 }}>
-                <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 12, color: "#00635d", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>{item}</a>
-              </div>
+              <a key={item} href="#" onClick={(e) => e.preventDefault()} className="gr-sidebar-btn" style={{ color: "var(--link-color)" }}>{item}</a>
             ))}
           </div>
         </aside>
 
-        {/* MAIN CONTENT */}
-        <main style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
+        {/* MAIN CONTROLLER GRAPH HUB */}
+        <main style={{ flex: 1, minWidth: 0 }}>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", paddingBottom: 10, marginBottom: 12, borderBottom: "1px solid #d6cfc4", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Control Strip Toolbar */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", paddingBottom: 14, marginBottom: 20, borderBottom: "1px solid var(--border-color)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ position: "relative" }}>
                 <input
                   type="text"
@@ -516,138 +674,134 @@ export default function App() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
-                    border: "1px solid #c9bfb5",
-                    borderRadius: 3,
-                    padding: "3px 26px 3px 7px",
-                    fontSize: 12,
-                    width: 180,
-                    background: "#fff",
-                    color: "#372213",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: 6,
+                    padding: "5px 30px 5px 12px",
+                    fontSize: 13,
+                    width: 220,
+                    background: "var(--bg-main)",
+                    color: "var(--text-main)",
                     fontFamily: "Arial, sans-serif",
                     outline: "none",
+                    transition: "all 0.2s ease"
                   }}
                 />
-                <Search size={12} style={{ position: "absolute", right: 7, top: "50%", transform: "translateY(-50%)", color: "#888" }} />
+                <Search size={14} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
               </div>
               {["Batch Edit", "Settings", "Stats", "Print"].map((btn) => (
-                <a key={btn} href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 12, color: "#00635d", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>{btn}</a>
+                <a key={btn} href="#" onClick={(e) => e.preventDefault()} className="gr-action-pill">{btn}</a>
               ))}
-              <div style={{ display: "flex", gap: 2 }}>
-                <div style={{ width: 22, height: 22, border: "1px solid #c9bfb5", background: "#e8e1d9", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 2, cursor: "default" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2,5px)", gap: 1 }}>
-                    {[0,1,2,3].map(i => <div key={i} style={{ width: 5, height: 5, background: "#8b7355", borderRadius: 1 }} />)}
-                  </div>
-                </div>
-                <div style={{ width: 22, height: 22, border: "1px solid #c9bfb5", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 2, cursor: "default" }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    {[0,1,2].map(i => <div key={i} style={{ width: 10, height: 2, background: "#c9bfb5" }} />)}
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
-          <table style={{ width: "100%", borderCollapse: "collapse", background: "#fff", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid #d6cfc4" }}>
-                <th style={thStyle}>cover</th>
-                <th style={{ ...thStyle, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("title")}>
-                  title <SortIcon field="title" />
-                </th>
-                <th style={{ ...thStyle, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("author")}>
-                  author <SortIcon field="author" />
-                </th>
-                <th style={{ ...thStyle, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("avgRating")}>
-                  avg<br />rating <SortIcon field="avgRating" />
-                </th>
-                <th style={{ ...thStyle, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("rating")}>
-                  rating <SortIcon field="rating" />
-                </th>
-                <th style={thStyle}>shelves</th>
-                <th style={thStyle}>review</th>
-                <th style={{ ...thStyle, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("dateRead")}>
-                  date<br />read <SortIcon field="dateRead" />
-                </th>
-                <th style={{ ...thStyle, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("dateAdded")}>
-                  date<br />added <SortIcon field="dateAdded" />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
+          {/* RESPONSIVE SCROLL SAFETY WRAPPER */}
+          <div style={{ width: "100%", overflowX: "auto", borderRadius: 8 }}>
+            <table className="gr-modern-table" style={{ minWidth: 1000 }}>
+              <thead>
                 <tr>
-                  <td colSpan={9} style={{ padding: "24px", textAlign: "center", color: "#888", fontFamily: "Arial, sans-serif", fontSize: 13 }}>
-                    No books match your search.
-                  </td>
+                  <th style={{ ...thStyle, width: 60 }}>cover</th>
+                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: "25%" }} onClick={() => handleSort("title")}>
+                    title <SortIcon field="title" />
+                  </th>
+                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: "20%" }} onClick={() => handleSort("author")}>
+                    author <SortIcon field="author" />
+                  </th>
+                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: 90 }} onClick={() => handleSort("avgRating")}>
+                    avg rating <SortIcon field="avgRating" />
+                  </th>
+                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: 140 }} onClick={() => handleSort("rating")}>
+                    your rating <SortIcon field="rating" />
+                  </th>
+                  <th style={{ ...thStyle, width: 150 }}>shelves</th>
+                  <th style={{ ...thStyle, width: 140 }}>review</th>
+                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: 100 }} onClick={() => handleSort("dateRead")}>
+                    date read <SortIcon field="dateRead" />
+                  </th>
+                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: 120 }} onClick={() => handleSort("dateAdded")}>
+                    date added <SortIcon field="dateAdded" />
+                  </th>
                 </tr>
-              ) : (
-                filtered.map((book) => (
-                  <tr key={book.id} style={{ borderBottom: "1px solid #d6cfc4" }}>
-                    <td style={tdStyle}>
-                      <img src={book.coverUrl} alt={book.coverAlt} style={{ width: 40, height: 56, objectFit: "cover", display: "block", border: "1px solid #d6cfc4" }} />
-                    </td>
-                    <td style={{ ...tdStyle, maxWidth: 200 }}>
-                      <a 
-                        href="#" 
-                        onClick={(e) => e.preventDefault()} 
-                        className="gr-book-link" 
-                        style={{ ...bookLinkStyle, fontWeight: 700, lineHeight: 1.3 }}
-                      >
-                        {book.title}
-                      </a>
-                    </td>
-                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                      <a 
-                        href="#" 
-                        onClick={(e) => e.preventDefault()} 
-                        className="gr-book-link" 
-                        style={bookLinkStyle}
-                      >
-                        {book.author}
-                      </a>
-                    </td>
-                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                      <span style={{ fontFamily: "Arial, sans-serif", fontSize: 13, color: "#372213" }}>{book.avgRating.toFixed(2)}</span>
-                    </td>
-                    <td style={tdStyle}>
-                      <StarDisplay filled={book.starCount} />
-                    </td>
-                    <td style={tdStyle}>
-                      <ShelfLabel shelf={book.shelf} />
-                      <div style={{ marginTop: 2 }}>
-                        <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 11, color: "#00635d", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>[edit]</a>
-                      </div>
-                    </td>
-                    <td style={tdStyle}>
-                      <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 12, color: "#00635d", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>Write a review</a>
-                    </td>
-                    <td style={tdStyle}>
-                      <div style={{ fontFamily: "Arial, sans-serif", fontSize: 11, color: "#888" }}>not<br />set</div>
-                      <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 11, color: "#00635d", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>[edit]</a>
-                    </td>
-                    <td style={tdStyle}>
-                      <div style={{ fontFamily: "Arial, sans-serif", fontSize: 12, color: "#372213", whiteSpace: "nowrap" }}>{book.dateAdded}</div>
-                      <div style={{ display: "flex", gap: 4, marginTop: 2 }}>
-                        <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 11, color: "#00635d", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>edit</a>
-                        <span style={{ fontSize: 11, color: "#aaa" }}>✕</span>
-                        <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 11, color: "#00635d", textDecoration: "none", fontFamily: "Arial, sans-serif" }}>view</a>
-                      </div>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} style={{ padding: "40px", textAlign: "center", color: "var(--text-muted)", fontFamily: "Arial, sans-serif", fontSize: 15 }}>
+                      No books match your search.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filtered.map((book) => (
+                    <tr key={book.id} className="gr-table-row">
+                      <td style={tdStyle}>
+                        <img src={book.coverUrl} alt={book.coverAlt} style={{ width: 44, height: 62, objectFit: "cover", display: "block", borderRadius: 4, border: "1px solid var(--border-color)", boxShadow: "0 1px 3px rgba(0,0,0,0.12)" }} />
+                      </td>
+                      <td style={tdStyle}>
+                        <a 
+                          href="#" 
+                          onClick={(e) => e.preventDefault()} 
+                          className="gr-book-link" 
+                          style={{ ...bookLinkStyle, fontWeight: 700, lineHeight: 1.4 }}
+                        >
+                          {book.title}
+                        </a>
+                      </td>
+                      <td style={tdStyle}>
+                        <a 
+                          href="#" 
+                          onClick={(e) => e.preventDefault()} 
+                          className="gr-book-link" 
+                          style={bookLinkStyle}
+                        >
+                          {book.author}
+                        </a>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{ fontFamily: "Arial, sans-serif", fontSize: 13, color: "var(--text-main)", fontWeight: 500 }}>{book.avgRating.toFixed(2)}</span>
+                      </td>
+                      <td style={tdStyle}>
+                        <InteractiveStarRating 
+                          bookId={book.id} 
+                          currentRating={book.starCount} 
+                          onRate={handleRateBook} 
+                        />
+                      </td>
+                      <td style={tdStyle}>
+                        <ShelfLabel shelf={book.shelf} />
+                        <div style={{ marginTop: 6 }}>
+                          <a href="#" onClick={(e) => e.preventDefault()} className="gr-action-pill" style={{ fontSize: 10, padding: "2px 6px" }}>edit</a>
+                        </div>
+                      </td>
+                      <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                        <a href="#" onClick={(e) => e.preventDefault()} className="gr-action-pill" style={{ fontSize: 12 }}>Write a review</a>
+                      </td>
+                      <td style={tdStyle}>
+                        <div style={{ fontFamily: "Arial, sans-serif", fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>not set</div>
+                        <a href="#" onClick={(e) => e.preventDefault()} className="gr-action-pill" style={{ fontSize: 10, padding: "2px 6px" }}>edit</a>
+                      </td>
+                      <td style={tdStyle}>
+                        <div style={{ fontFamily: "Arial, sans-serif", fontSize: 12, color: "var(--text-main)", whiteSpace: "nowrap" }}>{book.dateAdded}</div>
+                        <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
+                          <a href="#" onClick={(e) => e.preventDefault()} className="gr-action-pill" style={{ fontSize: 10, padding: "2px 6px" }}>edit</a>
+                          <span style={{ fontSize: 12, color: "var(--border-color)" }}>|</span>
+                          <a href="#" onClick={(e) => e.preventDefault()} className="gr-action-pill" style={{ fontSize: 10, padding: "2px 6px" }}>view</a>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-          <div style={{ marginTop: 10, fontSize: 11, color: "#888", fontFamily: "Arial, sans-serif" }}>
-            Showing {filtered.length} of {BOOKS.length} book{BOOKS.length !== 1 ? "s" : ""}
+          <div style={{ marginTop: 16, fontSize: 13, color: "var(--text-muted)", fontFamily: "Arial, sans-serif", fontWeight: 500, paddingLeft: 4 }}>
+            Showing {filtered.length} of {books.length} book{books.length !== 1 ? "s" : ""}
           </div>
         </main>
       </div>
 
       {/* Footer */}
-      <div style={{ borderTop: "1px solid #d6cfc4", padding: "12px 24px", marginTop: 32, textAlign: "center" }}>
-        <span style={{ fontSize: 11, color: "#888", fontFamily: "Arial, sans-serif" }}>
+      <div style={{ borderTop: "1px solid var(--border-color)", padding: "20px 24px", marginTop: 48, textAlign: "center", background: "var(--nav-bg)", transition: "all 0.2s ease" }}>
+        <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "Arial, sans-serif", letterSpacing: "0.2px" }}>
           Librio · Created by Dawn Brewer &amp; Abdoul Ba · Powered by goodreads
         </span>
       </div>
