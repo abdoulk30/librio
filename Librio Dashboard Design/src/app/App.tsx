@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { Search, Bell, Mail, Users, ChevronDown as ChevronDownNav, MessageCircle, Sun, Moon } from "lucide-react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Search, Bell, Mail, Users, ChevronDown as ChevronDownNav, MessageCircle, Sun, Moon, Loader2 } from "lucide-react";
 import narutoCover from "../imports/naruto.png";
 import onePieceCover from "../imports/onepiece.png";
 import gameOfThronesCover from "../imports/agot.png";
@@ -17,16 +17,23 @@ type BookShelf = "read" | "currently-reading" | "want-to-read" | "did-not-finish
 
 interface Book {
   id: number;
+  openLibraryKey?: string; 
   title: string;
   titleSort: string;
   author: string;
   authorSort: string;
-  avgRating: number;
   starCount: number;
   shelf: BookShelf;
   dateAdded: string;
   coverUrl: string;
   coverAlt: string;
+}
+
+interface OpenLibraryBookItem {
+  key: string;
+  title: string;
+  author_name?: string[];
+  cover_i?: number;
 }
 
 const INITIAL_BOOKS: Book[] = [
@@ -36,7 +43,6 @@ const INITIAL_BOOKS: Book[] = [
     titleSort: "Naruto, Vol. 1: Uzumaki Naruto",
     author: "Kishimoto, Masashi",
     authorSort: "Kishimoto",
-    avgRating: 4.41,
     starCount: 5,
     shelf: "read",
     dateAdded: "Jun 08, 2026",
@@ -49,7 +55,6 @@ const INITIAL_BOOKS: Book[] = [
     titleSort: "One Piece, Volume 1: Romance Dawn",
     author: "Oda, Eiichiro",
     authorSort: "Oda",
-    avgRating: 4.49,
     starCount: 5,
     shelf: "currently-reading",
     dateAdded: "Jun 08, 2026",
@@ -62,7 +67,6 @@ const INITIAL_BOOKS: Book[] = [
     titleSort: "A Game of Thrones",
     author: "Martin, George R.R.",
     authorSort: "Martin",
-    avgRating: 4.45,
     starCount: 5,
     shelf: "currently-reading",
     dateAdded: "Jun 08, 2026",
@@ -75,7 +79,6 @@ const INITIAL_BOOKS: Book[] = [
     titleSort: "Bleach, Vol. 1",
     author: "Kubo, Tite",
     authorSort: "Kubo",
-    avgRating: 4.27,
     starCount: 3,
     shelf: "read",
     dateAdded: "Jun 08, 2026",
@@ -88,7 +91,6 @@ const INITIAL_BOOKS: Book[] = [
     titleSort: "Fairy Tail, Vol. 01",
     author: "Mashima, Hiro",
     authorSort: "Mashima",
-    avgRating: 4.32,
     starCount: 4,
     shelf: "read",
     dateAdded: "Jun 09, 2026",
@@ -101,7 +103,6 @@ const INITIAL_BOOKS: Book[] = [
     titleSort: "Diary of a Wimpy Kid (Diary of a Wimpy Kid, #1)",
     author: "Kinney, Jeff",
     authorSort: "Kinney",
-    avgRating: 3.98,
     starCount: 4,
     shelf: "read",
     dateAdded: "Jun 09, 2026",
@@ -114,7 +115,6 @@ const INITIAL_BOOKS: Book[] = [
     titleSort: "Lightning Thief, The (Percy Jackson and the Olympians, #1)",
     author: "Riordan, Rick",
     authorSort: "Riordan",
-    avgRating: 4.31,
     starCount: 0,
     shelf: "want-to-read",
     dateAdded: "Jun 09, 2026",
@@ -127,7 +127,6 @@ const INITIAL_BOOKS: Book[] = [
     titleSort: "Attack on Titan, Vol. 1",
     author: "Isayama, Hajime",
     authorSort: "Isayama",
-    avgRating: 4.48,
     starCount: 5,
     shelf: "read",
     dateAdded: "Jun 10, 2026",
@@ -140,7 +139,6 @@ const INITIAL_BOOKS: Book[] = [
     titleSort: "Batman, Volume 1: The Court of Owls",
     author: "Snyder, Scott",
     authorSort: "Snyder",
-    avgRating: 4.33,
     starCount: 0,
     shelf: "want-to-read",
     dateAdded: "Jun 10, 2026",
@@ -153,7 +151,6 @@ const INITIAL_BOOKS: Book[] = [
     titleSort: "My Hero Academia, Vol. 1",
     author: "Horikoshi, Kohei",
     authorSort: "Horikoshi",
-    avgRating: 4.29,
     starCount: 4,
     shelf: "read",
     dateAdded: "Jun 10, 2026",
@@ -163,7 +160,7 @@ const INITIAL_BOOKS: Book[] = [
 ];
 
 type Shelf = "all" | "want-to-read" | "currently-reading" | "read" | "did-not-finish";
-type SortField = "title" | "author" | "avgRating" | "rating" | "dateRead" | "dateAdded" | null;
+type SortField = "title" | "author" | "rating" | "dateRead" | "dateAdded" | null;
 type SortDir = "asc" | "desc";
 
 function InteractiveStarRating({ 
@@ -176,6 +173,13 @@ function InteractiveStarRating({
   onRate: (id: number, rating: number) => void; 
 }) {
   const [hoverRating, setHoverRating] = useState<number | null>(null);
+  const [justClicked, setJustClicked] = useState(false);
+
+  const handleStarClick = (starIndex: number) => {
+    onRate(bookId, starIndex);
+    setJustClicked(true);
+    setTimeout(() => setJustClicked(false), 400);
+  };
 
   return (
     <span 
@@ -189,7 +193,7 @@ function InteractiveStarRating({
         return (
           <button
             key={i}
-            onClick={() => onRate(bookId, starIndex)}
+            onClick={() => handleStarClick(starIndex)}
             onMouseEnter={() => setHoverRating(starIndex)}
             style={{
               background: "none",
@@ -199,9 +203,9 @@ function InteractiveStarRating({
               color: isFilled ? "#e07b39" : "var(--star-empty)",
               fontSize: 19,
               lineHeight: 1,
-              transition: "transform 0.1s ease, color 0.1s ease",
+              transition: "transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.15s ease",
             }}
-            className="gr-star-icon"
+            className={`gr-star-icon ${justClicked && isFilled ? "gr-star-burst" : ""}`}
           >
             ★
           </button>
@@ -230,7 +234,11 @@ export default function App() {
   const [books, setBooks] = useState<Book[]>(() => {
     try {
       const saved = localStorage.getItem("librio-books");
-      return saved ? JSON.parse(saved) : INITIAL_BOOKS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.map(({ avgRating, ...rest }: any) => rest);
+      }
+      return INITIAL_BOOKS;
     } catch (e) {
       console.error("Failed to load local books schema:", e);
       return INITIAL_BOOKS;
@@ -251,8 +259,28 @@ export default function App() {
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   
-  // Track which book's shelf is currently actively being edited inline
+  // Pagination State Settings
+  const [currentPage, setCurrentPage] = useState(1);
+  const BOOKS_PER_PAGE = 10;
+
+  // Pagination change key trigger to restart CSS staggered animations cleanly
+  const [pageTransitionKey, setPageTransitionKey] = useState(0);
+
   const [editingShelfBookId, setEditingShelfBookId] = useState<number | null>(null);
+
+  const [apiSearchInput, setApiSearchInput] = useState("");
+  const [apiResults, setApiResults] = useState<OpenLibraryBookItem[]>([]);
+  const [isSearchingApi, setIsSearchingApi] = useState(false);
+  const [showApiDropdown, setShowApiDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [fullscreenCover, setFullscreenCover] = useState<{ url: string; alt: string } | null>(null);
+
+  // Reset pagination to page 1 if search query or active shelf filters change
+  useEffect(() => {
+    setCurrentPage(1);
+    setPageTransitionKey(prev => prev + 1);
+  }, [searchQuery, activeShelf]);
 
   useEffect(() => {
     try {
@@ -265,6 +293,57 @@ export default function App() {
       localStorage.setItem("librio-theme", theme);
     } catch (e) {}
   }, [theme]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setFullscreenCover(null);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowApiDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (!apiSearchInput.trim()) {
+      setApiResults([]);
+      setShowApiDropdown(false);
+      return;
+    }
+
+    setIsSearchingApi(true);
+    setShowApiDropdown(true);
+
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `https://openlibrary.org/search.json?q=${encodeURIComponent(apiSearchInput.trim())}&limit=5`,
+          {
+            headers: {
+              "User-Agent": "LibrioReadingApp/2.0.0 (academic-dev-client@example.com)"
+            }
+          }
+        );
+        const data = await response.json();
+        setApiResults(data.docs || []);
+      } catch (error) {
+        console.error("Open Library connection issue:", error);
+        setApiResults([]);
+      } finally {
+        setIsSearchingApi(false);
+      }
+    }, 450);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [apiSearchInput]);
 
   const handleRateBook = (id: number, newRating: number) => {
     setBooks(prevBooks => 
@@ -283,6 +362,63 @@ export default function App() {
     setEditingShelfBookId(null);
   };
 
+  const remove = (id: number) => {
+    setBooks(prevBooks => prevBooks.filter(book => book.id !== id));
+    const totalFilteredNow = filtered.length - 1;
+    const maxPagesNow = Math.max(1, Math.ceil(totalFilteredNow / BOOKS_PER_PAGE));
+    if (currentPage > maxPagesNow) {
+      setCurrentPage(maxPagesNow);
+    }
+  };
+
+  const handleAddBookFromApi = (item: OpenLibraryBookItem) => {
+    const isDuplicate = books.some(book => 
+      (book.openLibraryKey && book.openLibraryKey === item.key) || 
+      (book.title.toLowerCase().trim() === item.title.toLowerCase().trim())
+    );
+
+    if (isDuplicate) {
+      alert(`"${item.title}" is already on your bookshelf!`);
+      setShowApiDropdown(false);
+      return;
+    }
+
+    const authorText = item.author_name ? item.author_name[0] : "Unknown Author";
+    
+    const authorParts = authorText.split(" ");
+    const authorSort = authorParts.length > 1 
+      ? `${authorParts[authorParts.length - 1]}, ${authorParts.slice(0, -1).join(" ")}`
+      : authorText;
+
+    const coverUrl = item.cover_i 
+      ? `https://covers.openlibrary.org/b/id/${item.cover_i}-L.jpg`
+      : "https://openlibrary.org/images/icons/avatar_book-sm.png";
+
+    const newBook: Book = {
+      id: Date.now(),
+      openLibraryKey: item.key,
+      title: item.title,
+      titleSort: item.title,
+      author: authorText,
+      authorSort: authorSort,
+      starCount: 0,
+      shelf: "want-to-read", 
+      dateAdded: new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric"
+      }),
+      coverUrl: coverUrl,
+      coverAlt: `${item.title} edition cover`
+    };
+
+    setBooks(prev => [newBook, ...prev]);
+    setApiSearchInput("");
+    setShowApiDropdown(false);
+    setCurrentPage(1); 
+    setPageTransitionKey(prev => prev + 1);
+  };
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -290,6 +426,17 @@ export default function App() {
       setSortField(field);
       setSortDir("asc");
     }
+    setCurrentPage(1);
+    setPageTransitionKey(prev => prev + 1);
+  };
+
+  const handlePageChange = (direction: "next" | "prev") => {
+    if (direction === "next") {
+      setCurrentPage(prev => Math.min(totalPages, prev + 1));
+    } else {
+      setCurrentPage(prev => Math.max(1, prev - 1));
+    }
+    setPageTransitionKey(prev => prev + 1);
   };
 
   const filtered = useMemo(() => {
@@ -316,10 +463,6 @@ export default function App() {
       rows.sort((a, b) =>
         sortDir === "asc" ? a.authorSort.localeCompare(b.authorSort) : b.authorSort.localeCompare(a.authorSort)
       );
-    } else if (sortField === "avgRating") {
-      rows.sort((a, b) =>
-        sortDir === "asc" ? a.avgRating - b.avgRating : b.avgRating - a.avgRating
-      );
     } else if (sortField === "rating") {
       rows.sort((a, b) =>
         sortDir === "asc" ? a.starCount - b.starCount : b.starCount - a.starCount
@@ -336,6 +479,13 @@ export default function App() {
 
     return rows;
   }, [books, searchQuery, activeShelf, sortField, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / BOOKS_PER_PAGE));
+  
+  const paginatedBooks = useMemo(() => {
+    const startIndex = (currentPage - 1) * BOOKS_PER_PAGE;
+    return filtered.slice(startIndex, startIndex + BOOKS_PER_PAGE);
+  }, [filtered, currentPage]);
 
   const shelfCounts = {
     all: books.length,
@@ -411,6 +561,11 @@ export default function App() {
           --star-empty: #d4c9bc;
           --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
           --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+          --api-dropdown-bg: #ffffff;
+          --api-row-hover: #f7f5f0;
+          --remove-hover-bg: #fce8e6;
+          --remove-hover-txt: #c53030;
+          --overlay-bg: rgba(26, 24, 21, 0.45);
         }
         .theme-dark {
           --bg-main: #121212;
@@ -429,6 +584,11 @@ export default function App() {
           --star-empty: #403c37;
           --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
           --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+          --api-dropdown-bg: #1c1b18;
+          --api-row-hover: #2d2a25;
+          --remove-hover-bg: #4c1d1d;
+          --remove-hover-txt: #feb2b2;
+          --overlay-bg: rgba(0, 0, 0, 0.75);
         }
 
         .gr-book-link:hover {
@@ -473,6 +633,24 @@ export default function App() {
           transform: translateY(-0.5px);
         }
 
+        .gr-remove-btn {
+          font-size: 11px !important;
+          font-family: Arial, sans-serif;
+          padding: 4px 8px;
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          background: var(--nav-bg);
+          color: var(--text-muted);
+          cursor: pointer;
+          transition: all 0.15s ease;
+          box-shadow: var(--shadow-sm);
+        }
+        .gr-remove-btn:hover {
+          background: var(--remove-hover-bg) !important;
+          color: var(--remove-hover-txt) !important;
+          border-color: transparent;
+        }
+
         .gr-modern-table {
           width: 100%;
           border-collapse: separate;
@@ -484,8 +662,10 @@ export default function App() {
           overflow: hidden;
           transition: background-color 0.2s ease, border-color 0.2s ease;
         }
+
+        /* 1. STAGGERED PAGE-FLIP ENTRY ANIMATIONS */
         .gr-table-row {
-          transition: background-color 0.15s ease;
+          animation: pageFlipFadeIn 0.4s cubic-bezier(0.215, 0.610, 0.355, 1) both;
         }
         .gr-table-row:hover {
           background-color: var(--row-hover-bg);
@@ -494,8 +674,30 @@ export default function App() {
           border-bottom: 1px solid var(--border-color);
         }
 
+        @keyframes pageFlipFadeIn {
+          0% {
+            opacity: 0;
+            transform: translateY(8px) rotateX(-4deg);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) rotateX(0deg);
+          }
+        }
+
+        /* 2. ELASTIC STAR BURST EFFECT */
         .gr-star-icon:hover {
-          transform: scale(1.2);
+          transform: scale(1.3);
+        }
+        .gr-star-burst {
+          animation: starElasticBurst 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.5) forwards;
+        }
+
+        @keyframes starElasticBurst {
+          0% { transform: scale(1); }
+          40% { transform: scale(1.6); filter: drop-shadow(0 0 6px #e07b39); }
+          70% { transform: scale(0.9); }
+          100% { transform: scale(1); }
         }
 
         .gr-shelf-select {
@@ -507,6 +709,100 @@ export default function App() {
           background: var(--bg-main);
           color: var(--text-main);
           outline: none;
+        }
+
+        .gr-api-result-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 12px;
+          cursor: pointer;
+          transition: background-color 0.15s ease;
+          border-bottom: 1px solid var(--border-color);
+        }
+        .gr-api-result-item:last-child {
+          border-bottom: none;
+        }
+        .gr-api-result-item:hover {
+          background-color: var(--api-row-hover);
+        }
+
+        /* TACTILE PERSPECTIVE HOVER FOR THUMBNAILS */
+        .gr-clickable-cover {
+          cursor: zoom-in;
+          transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+          perspective: 1000px;
+        }
+        .gr-clickable-cover:hover {
+          transform: scale(1.04) rotateY(-5deg);
+          box-shadow: 5px 6px 14px rgba(0,0,0,0.26) !important;
+        }
+
+        .gr-page-btn {
+          font-family: Arial, sans-serif;
+          font-size: 13px;
+          padding: 6px 14px;
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+          background: var(--nav-bg);
+          color: var(--link-color);
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          font-weight: bold;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .gr-page-btn:hover:not(:disabled) {
+          background: var(--sidebar-btn-hover);
+          transform: translateY(-1px);
+        }
+        .gr-page-btn:disabled {
+          opacity: 0.4;
+          color: var(--text-muted);
+          cursor: not-allowed;
+          border-color: var(--border-color);
+        }
+
+        /* 3. 3D OPEN BOOK LIGHTBOX ANIMATION FRAMEWORKS */
+        .gr-lightbox-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background-color: var(--overlay-bg);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          display: flex;
+          align-items: center;
+          justify-content: center; /* Centers the container horizontally */
+          z-index: 1000;
+          animation: backdropBlurFade 0.25s linear both;
+        }
+
+        @keyframes backdropBlurFade {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .gr-3d-book-container {
+          perspective: 1500px;
+          display: flex;
+          align-items: center;
+          justify-content: center; /* Centers the image inside the container */
+          animation: bookOpeningReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @keyframes bookOpeningReveal {
+          0% {
+            opacity: 0;
+            transform: scale(0.7) rotateY(-45deg) rotateX(10deg);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) rotateY(-12deg) rotateX(0deg);
+          }
         }
       `}</style>
 
@@ -568,11 +864,14 @@ export default function App() {
             </a>
           </div>
 
-          {/* Search Bar Container */}
-          <div style={{ position: "relative", display: "flex", alignItems: "center", flexGrow: 1, minWidth: 260, marginLeft: 10 }}>
+          {/* BIGGER GLOBAL ENGINE SEARCH CONTAINER */}
+          <div ref={dropdownRef} style={{ position: "relative", display: "flex", alignItems: "center", flexGrow: 1, minWidth: 260, marginLeft: 10 }}>
             <input
               type="text"
-              placeholder="Search books"
+              placeholder="Find and add books"
+              value={apiSearchInput}
+              onChange={(e) => setApiSearchInput(e.target.value)}
+              onFocus={() => { if (apiSearchInput.trim()) setShowApiDropdown(true); }}
               style={{
                 border: "1px solid var(--border-color)",
                 borderRadius: "6px",
@@ -587,10 +886,75 @@ export default function App() {
                 transition: "all 0.2s ease"
               }}
             />
-            <Search size={18} color="var(--text-muted)" strokeWidth={2.5} style={{ position: "absolute", right: 12, cursor: "pointer" }} />
+            <div style={{ position: "absolute", right: 12, display: "flex", alignItems: "center" }}>
+              {isSearchingApi ? (
+                <Loader2 size={18} className="animate-spin" style={{ color: "var(--link-color)" }} />
+              ) : (
+                <Search size={18} color="var(--text-muted)" strokeWidth={2.5} style={{ cursor: "pointer" }} />
+              )}
+            </div>
+
+            {/* GLOBAL ENGINE SEARCH DROPDOWN PORTAL */}
+            {showApiDropdown && (
+              <div style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                width: "100%",
+                maxWidth: 450,
+                background: "var(--api-dropdown-bg)",
+                border: "1px solid var(--border-color)",
+                borderRadius: "8px",
+                boxShadow: "0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.15)",
+                zIndex: 50,
+                marginTop: 6,
+                maxHeight: 400,
+                overflowY: "auto"
+              }}>
+                {isSearchingApi && (
+                  <div style={{ padding: "16px", textAlign: "center", fontSize: 13, color: "var(--text-muted)", fontFamily: "Arial, sans-serif" }}>
+                    Searching live global library engine...
+                  </div>
+                )}
+                {!isSearchingApi && apiResults.length === 0 && (
+                  <div style={{ padding: "16px", textAlign: "center", fontSize: 13, color: "var(--text-muted)", fontFamily: "Arial, sans-serif" }}>
+                    No catalog records found matching that query.
+                  </div>
+                )}
+                {apiResults.map((item) => {
+                  return (
+                    <div 
+                      key={item.key} 
+                      className="gr-api-result-item"
+                      onClick={() => handleAddBookFromApi(item)}
+                    >
+                      <img 
+                        src={item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-S.jpg` : "https://openlibrary.org/images/icons/avatar_book-sm.png"} 
+                        alt="" 
+                        style={{ width: 34, height: 48, objectFit: "cover", borderRadius: 3, border: "1px solid var(--border-color)", flexShrink: 0 }} 
+                      />
+                      <div style={{ flexGrow: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: "bold", color: "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Arial, sans-serif" }}>
+                          {item.title}
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Arial, sans-serif", marginTop: 2 }}>
+                          by {item.author_name ? item.author_name[0] : "Unknown Author"}
+                        </div>
+                      </div>
+                      <span 
+                        className="gr-action-pill" 
+                        style={{ fontSize: 10, padding: "3px 8px", pointerEvents: "none" }}
+                      >
+                        + Add
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* User actions panel */}
+          {/* Icon Array */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
             <button 
               onClick={() => setTheme(theme === "light" ? "dark" : "light")}
@@ -601,7 +965,7 @@ export default function App() {
                 cursor: "pointer",
                 boxShadow: "var(--shadow-sm)"
               }}
-              title={`Switch theme layout`}
+              title={`Switch layout context`}
             >
               {theme === "light" ? <Moon size={15} color="#fff" /> : <Sun size={15} color="#121212" />}
             </button>
@@ -613,14 +977,14 @@ export default function App() {
         </div>
       </nav>
 
-      {/* PAGE MAIN SECTION CANVAS */}
+      {/* BODY FRAME */}
       <div style={{ display: "flex", maxWidth: 1440, margin: "0 auto", padding: "32px 24px" }}>
 
-        {/* SIDEBAR CONTAINER */}
+        {/* SIDEBAR PANEL */}
         <aside style={{ width: 210, flexShrink: 0, marginRight: 48 }}>
           <h1 style={{ fontSize: 28, fontWeight: "normal", color: "var(--link-color)", margin: "0 0 20px 0", fontFamily: "Georgia, serif" }}>My Books</h1>
 
-          {/* Bookshelves */}
+          {/* Bookshelves section */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, paddingLeft: 6 }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-main)", fontFamily: "Arial, sans-serif" }}>Bookshelves</span>
@@ -633,7 +997,6 @@ export default function App() {
               ["read", `Read (${shelfCounts.read})`],
               ["did-not-finish", `Did Not Finish (${shelfCounts["did-not-finish"]})`],
             ] as [Shelf, string][]).map(([shelf, label]) => {
-              // Format labels to remove dashes for dashboard sidebar visualization
               const displayLabel = label.replace("Want to Read", "Want to read").replace("Currently Reading", "Currently reading").replace("Did Not Finish", "Did not finish");
               return (
                 <a
@@ -663,7 +1026,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Activity Logs */}
           <div style={{ marginBottom: 20, paddingLeft: 4 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-main)", marginBottom: 8, fontFamily: "Arial, sans-serif" }}>Your reading activity</div>
             {["Review Drafts", "Kindle Notes & Highlights", "Reading Challenge", "Year in Books", "Reading stats"].map((item) => (
@@ -671,7 +1033,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* Discovery Links */}
           <div style={{ marginBottom: 20, paddingLeft: 4 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-main)", marginBottom: 8, fontFamily: "Arial, sans-serif" }}>Add books</div>
             {["Amazon book purchases", "Recommendations", "Explore"].map((item) => (
@@ -679,7 +1040,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* Maintenance Panels */}
           <div style={{ paddingLeft: 4 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-main)", marginBottom: 8, fontFamily: "Arial, sans-serif" }}>Tools</div>
             {["Find duplicates", "Widgets", "Import and export"].map((item) => (
@@ -688,16 +1048,18 @@ export default function App() {
           </div>
         </aside>
 
-        {/* MAIN CONTROLLER GRAPH HUB */}
+        {/* WORKSPACE CENTRAL WORKGROUND */}
         <main style={{ flex: 1, minWidth: 0 }}>
 
-          {/* Control Strip Toolbar */}
+          {/* Control Strip containing the Smaller Search Input */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", paddingBottom: 14, marginBottom: 20, borderBottom: "1px solid var(--border-color)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              
+              {/* SMALLER SHELF FILTER SEARCH INPUT */}
               <div style={{ position: "relative" }}>
                 <input
                   type="text"
-                  placeholder="Search and add books"
+                  placeholder="Search books"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
@@ -705,7 +1067,7 @@ export default function App() {
                     borderRadius: 6,
                     padding: "5px 30px 5px 12px",
                     fontSize: 13,
-                    width: 220,
+                    width: 240,
                     background: "var(--bg-main)",
                     color: "var(--text-main)",
                     fontFamily: "Arial, sans-serif",
@@ -715,52 +1077,80 @@ export default function App() {
                 />
                 <Search size={14} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
               </div>
+
               {["Batch Edit", "Settings", "Stats", "Print"].map((btn) => (
                 <a key={btn} href="#" onClick={(e) => e.preventDefault()} className="gr-action-pill">{btn}</a>
               ))}
             </div>
           </div>
 
-          {/* RESPONSIVE SCROLL SAFETY WRAPPER */}
+          {/* RESPONSIVE DATA TABLE CONTAINER */}
           <div style={{ width: "100%", overflowX: "auto", borderRadius: 8 }}>
-            <table className="gr-modern-table" style={{ minWidth: 1000 }}>
+            <table className="gr-modern-table" style={{ minWidth: 950 }}>
               <thead>
                 <tr>
-                  <th style={{ ...thStyle, width: 60 }}>cover</th>
-                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: "25%" }} onClick={() => handleSort("title")}>
+                  <th style={{ ...thStyle, width: 40 }}></th>
+                  <th style={{ ...thStyle, width: 110, textAlign: "center" }}>cover</th>
+                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: "30%" }} onClick={() => handleSort("title")}>
                     title <SortIcon field="title" />
                   </th>
-                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: "20%" }} onClick={() => handleSort("author")}>
+                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: "25%" }} onClick={() => handleSort("author")}>
                     author <SortIcon field="author" />
                   </th>
-                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: 90 }} onClick={() => handleSort("avgRating")}>
-                    avg rating <SortIcon field="avgRating" />
-                  </th>
-                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: 140 }} onClick={() => handleSort("rating")}>
+                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: 150 }} onClick={() => handleSort("rating")}>
                     your rating <SortIcon field="rating" />
                   </th>
-                  <th style={{ ...thStyle, width: 150 }}>shelves</th>
+                  <th style={{ ...thStyle, width: 160 }}>shelves</th>
                   <th style={{ ...thStyle, width: 140 }}>review</th>
-                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: 100 }} onClick={() => handleSort("dateRead")}>
+                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: 110 }} onClick={() => handleSort("dateRead")}>
                     date read <SortIcon field="dateRead" />
                   </th>
-                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: 120 }} onClick={() => handleSort("dateAdded")}>
+                  <th style={{ ...thStyle, cursor: "pointer", userSelect: "none", width: 130 }} onClick={() => handleSort("dateAdded")}>
                     date added <SortIcon field="dateAdded" />
                   </th>
                 </tr>
               </thead>
-              <tbody>
-                {filtered.length === 0 ? (
+              <tbody key={pageTransitionKey}>
+                {paginatedBooks.length === 0 ? (
                   <tr>
                     <td colSpan={9} style={{ padding: "40px", textAlign: "center", color: "var(--text-muted)", fontFamily: "Arial, sans-serif", fontSize: 15 }}>
                       No books match your search.
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((book) => (
-                    <tr key={book.id} className="gr-table-row">
-                      <td style={tdStyle}>
-                        <img src={book.coverUrl} alt={book.coverAlt} style={{ width: 44, height: 62, objectFit: "cover", display: "block", borderRadius: 4, border: "1px solid var(--border-color)", boxShadow: "0 1px 3px rgba(0,0,0,0.12)" }} />
+                  paginatedBooks.map((book, index) => (
+                    <tr 
+                      key={book.id} 
+                      className="gr-table-row"
+                      style={{ animationDelay: `${index * 35}ms` }}
+                    >
+                      <td style={{ ...tdStyle, verticalAlign: "middle", padding: "16px 8px 16px 16px", textAlign: "center" }}>
+                        <button 
+                          className="gr-remove-btn"
+                          onClick={() => remove(book.id)}
+                          title="Remove from my books"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                      <td style={{ ...tdStyle, padding: "8px 12px", verticalAlign: "middle" }}>
+                        <div style={{ display: "flex", justifyContent: "center" }}>
+                          <img 
+                            src={book.coverUrl} 
+                            alt={book.coverAlt} 
+                            className="gr-clickable-cover"
+                            onClick={() => setFullscreenCover({ url: book.coverUrl, alt: book.coverAlt })}
+                            title="Click to flip open full perspective cover"
+                            style={{ 
+                              width: 90,
+                              height: "auto",
+                              display: "block",
+                              borderRadius: 4, 
+                              border: "1px solid var(--border-color)", 
+                              boxShadow: "2px 3px 7px rgba(0,0,0,0.16)"
+                            }} 
+                          />
+                        </div>
                       </td>
                       <td style={tdStyle}>
                         <a 
@@ -783,16 +1173,12 @@ export default function App() {
                         </a>
                       </td>
                       <td style={tdStyle}>
-                        <span style={{ fontFamily: "Arial, sans-serif", fontSize: 13, color: "var(--text-main)", fontWeight: 500 }}>{book.avgRating.toFixed(2)}</span>
-                      </td>
-                      <td style={tdStyle}>
                         <InteractiveStarRating 
                           bookId={book.id} 
                           currentRating={book.starCount} 
                           onRate={handleRateBook} 
                         />
                       </td>
-                      {/* SHELVES COLUMN WITH INLINE STATUS EDIT SELECTOR */}
                       <td style={tdStyle}>
                         {editingShelfBookId === book.id ? (
                           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -857,16 +1243,97 @@ export default function App() {
             </table>
           </div>
 
-          <div style={{ marginTop: 16, fontSize: 13, color: "var(--text-muted)", fontFamily: "Arial, sans-serif", fontWeight: 500, paddingLeft: 4 }}>
-            Showing {filtered.length} of {books.length} book{books.length !== 1 ? "s" : ""}
+          {/* TABLE INFO & PAGINATION NAVIGATION CONTROLS */}
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "space-between", 
+            marginTop: 20, 
+            padding: "0 4px"
+          }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", fontFamily: "Arial, sans-serif", fontWeight: 500 }}>
+              Showing {filtered.length === 0 ? 0 : (currentPage - 1) * BOOKS_PER_PAGE + 1}–{Math.min(currentPage * BOOKS_PER_PAGE, filtered.length)} of {filtered.length} book{filtered.length !== 1 ? "s" : ""}
+              {books.length !== filtered.length && ` (filtered from ${books.length} total)`}
+            </div>
+
+            {/* Pagination Controls Right Arrow / Left Arrow Array */}
+            {totalPages > 1 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <button 
+                  className="gr-page-btn" 
+                  disabled={currentPage === 1}
+                  onClick={() => handlePageChange("prev")}
+                  title="Previous page"
+                >
+                  ← Previous
+                </button>
+                <span style={{ fontFamily: "Arial, sans-serif", fontSize: 13, color: "var(--text-main)", fontWeight: 600 }}>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button 
+                  className="gr-page-btn" 
+                  disabled={currentPage === totalPages}
+                  onClick={() => handlePageChange("next")}
+                  title="Next page"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
           </div>
         </main>
       </div>
 
+      {/* 3D OPEN BOOK LIGHTBOX OVERLAY PORTAL */}
+      {fullscreenCover && (
+        <div 
+          onClick={() => setFullscreenCover(null)}
+          className="gr-lightbox-backdrop"
+        >
+          <div 
+            className="gr-3d-book-container"
+            style={{ position: "relative", maxWidth: "85%", maxHeight: "85%" }}
+          >
+            <button 
+              onClick={(e) => { e.stopPropagation(); setFullscreenCover(null); }}
+              style={{
+                position: "absolute",
+                top: -45,
+                right: -10,
+                background: "none",
+                border: "none",
+                color: "#fff",
+                fontSize: 28,
+                cursor: "pointer",
+                fontFamily: "Arial, sans-serif",
+                textShadow: "0 2px 4px rgba(0,0,0,0.5)"
+              }}
+              title="Close panel (Esc)"
+            >
+              ✕
+            </button>
+            <img 
+              src={fullscreenCover.url} 
+              alt={fullscreenCover.alt}
+              onClick={(e) => e.stopPropagation()} 
+              style={{
+                maxWidth: "100%",
+                maxHeight: "75vh",
+                objectFit: "contain",
+                borderRadius: "4px 12px 12px 4px",
+                boxShadow: "-15px 20px 45px rgba(0,0,0,0.65), 0 2px 10px rgba(0,0,0,0.4)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                cursor: "default"
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <div style={{ borderTop: "1px solid var(--border-color)", padding: "20px 24px", marginTop: 48, textAlign: "center", background: "var(--nav-bg)", transition: "all 0.2s ease" }}>
         <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "Arial, sans-serif", letterSpacing: "0.2px" }}>
-          Librio · Created by Dawn Brewer &amp; Abdoul Ba · Powered by goodreads
+          Librio · Created by Dawn Brewer &amp; Abdoul Ba · Powered by Open Library
         </span>
       </div>
     </div>
