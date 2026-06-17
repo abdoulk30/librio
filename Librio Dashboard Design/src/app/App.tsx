@@ -214,7 +214,7 @@ function InteractiveStarRating({
 function ShelfLabel({ shelf }: { shelf: BookShelf }) {
   const map = {
     "read": { label: "read" },
-    "currently-reading": { label: "currently-reading" },
+    "currently-reading": { label: "currently reading" },
     "want-to-read": { label: "want to read" },
     "did-not-finish": { label: "did not finish" },
   };
@@ -250,6 +250,9 @@ export default function App() {
   const [activeShelf, setActiveShelf] = useState<Shelf>("all");
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  
+  // Track which book's shelf is currently actively being edited inline
+  const [editingShelfBookId, setEditingShelfBookId] = useState<number | null>(null);
 
   useEffect(() => {
     try {
@@ -269,6 +272,15 @@ export default function App() {
         book.id === id ? { ...book, starCount: book.starCount === newRating ? 0 : newRating } : book
       )
     );
+  };
+
+  const handleShelfChange = (id: number, newShelf: BookShelf) => {
+    setBooks(prevBooks =>
+      prevBooks.map(book =>
+        book.id === id ? { ...book, shelf: newShelf } : book
+      )
+    );
+    setEditingShelfBookId(null);
   };
 
   const handleSort = (field: SortField) => {
@@ -485,6 +497,17 @@ export default function App() {
         .gr-star-icon:hover {
           transform: scale(1.2);
         }
+
+        .gr-shelf-select {
+          font-family: Arial, sans-serif;
+          font-size: 12px;
+          padding: 3px 6px;
+          border-radius: 4px;
+          border: 1px solid var(--border-color);
+          background: var(--bg-main);
+          color: var(--text-main);
+          outline: none;
+        }
       `}</style>
 
       {/* TOP NAV */}
@@ -609,20 +632,24 @@ export default function App() {
               ["currently-reading", `Currently Reading (${shelfCounts["currently-reading"]})`],
               ["read", `Read (${shelfCounts.read})`],
               ["did-not-finish", `Did Not Finish (${shelfCounts["did-not-finish"]})`],
-            ] as [Shelf, string][]).map(([shelf, label]) => (
-              <a
-                key={shelf}
-                href="#"
-                onClick={(e) => { e.preventDefault(); setActiveShelf(shelf); }}
-                className={`gr-sidebar-btn ${activeShelf === shelf ? "gr-sidebar-btn-active" : ""}`}
-                style={{
-                  color: activeShelf === shelf ? "var(--text-main)" : "var(--link-color)",
-                  fontWeight: activeShelf === shelf ? 700 : 400,
-                }}
-              >
-                {label}
-              </a>
-            ))}
+            ] as [Shelf, string][]).map(([shelf, label]) => {
+              // Format labels to remove dashes for dashboard sidebar visualization
+              const displayLabel = label.replace("Want to Read", "Want to read").replace("Currently Reading", "Currently reading").replace("Did Not Finish", "Did not finish");
+              return (
+                <a
+                  key={shelf}
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); setActiveShelf(shelf); }}
+                  className={`gr-sidebar-btn ${activeShelf === shelf ? "gr-sidebar-btn-active" : ""}`}
+                  style={{
+                    color: activeShelf === shelf ? "var(--text-main)" : "var(--link-color)",
+                    fontWeight: activeShelf === shelf ? 700 : 400,
+                  }}
+                >
+                  {displayLabel}
+                </a>
+              );
+            })}
             
             <hr style={{ border: "none", borderTop: "1px solid var(--border-color)", margin: "14px 0 10px 0" }} />
 
@@ -765,11 +792,48 @@ export default function App() {
                           onRate={handleRateBook} 
                         />
                       </td>
+                      {/* SHELVES COLUMN WITH INLINE STATUS EDIT SELECTOR */}
                       <td style={tdStyle}>
-                        <ShelfLabel shelf={book.shelf} />
-                        <div style={{ marginTop: 6 }}>
-                          <a href="#" onClick={(e) => e.preventDefault()} className="gr-action-pill" style={{ fontSize: 10, padding: "2px 6px" }}>edit</a>
-                        </div>
+                        {editingShelfBookId === book.id ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            <select
+                              value={book.shelf}
+                              onChange={(e) => handleShelfChange(book.id, e.target.value as BookShelf)}
+                              onBlur={() => setEditingShelfBookId(null)}
+                              className="gr-shelf-select"
+                              autoFocus
+                            >
+                              <option value="read">read</option>
+                              <option value="currently-reading">currently reading</option>
+                              <option value="want-to-read">want to read</option>
+                              <option value="did-not-finish">did not finish</option>
+                            </select>
+                            <div>
+                              <a 
+                                href="#" 
+                                onClick={(e) => { e.preventDefault(); setEditingShelfBookId(null); }} 
+                                className="gr-action-pill" 
+                                style={{ fontSize: 9, padding: "1px 4px", background: "transparent" }}
+                              >
+                                cancel
+                              </a>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <ShelfLabel shelf={book.shelf} />
+                            <div style={{ marginTop: 6 }}>
+                              <a 
+                                href="#" 
+                                onClick={(e) => { e.preventDefault(); setEditingShelfBookId(book.id); }} 
+                                className="gr-action-pill" 
+                                style={{ fontSize: 10, padding: "2px 6px", cursor: "pointer" }}
+                              >
+                                edit
+                              </a>
+                            </div>
+                          </>
+                        )}
                       </td>
                       <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                         <a href="#" onClick={(e) => e.preventDefault()} className="gr-action-pill" style={{ fontSize: 12 }}>Write a review</a>
