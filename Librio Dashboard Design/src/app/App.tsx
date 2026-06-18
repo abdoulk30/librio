@@ -268,12 +268,15 @@ export default function App() {
 
   const [editingShelfBookId, setEditingShelfBookId] = useState<number | null>(null);
 
+  // Global Catalog Engine Search State
   const [apiSearchInput, setApiSearchInput] = useState("");
   const [apiResults, setApiResults] = useState<OpenLibraryBookItem[]>([]);
   const [isSearchingApi, setIsSearchingApi] = useState(false);
   const [showApiDropdown, setShowApiDropdown] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
-
   const [fullscreenCover, setFullscreenCover] = useState<{ url: string; alt: string } | null>(null);
 
   // Reset pagination to page 1 if search query or active shelf filters change
@@ -312,15 +315,27 @@ export default function App() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Global Engine Live Search with Debounce and Error Diagnostics
   useEffect(() => {
     if (!apiSearchInput.trim()) {
       setApiResults([]);
       setShowApiDropdown(false);
+      setApiError(null);
+      setValidationMessage(null);
+      return;
+    }
+
+    if (apiSearchInput.trim().length < 2) {
+      setValidationMessage("Type at least 2 characters to search...");
+      setApiResults([]);
+      setShowApiDropdown(true);
       return;
     }
 
     setIsSearchingApi(true);
     setShowApiDropdown(true);
+    setApiError(null);
+    setValidationMessage(null);
 
     const delayDebounceFn = setTimeout(async () => {
       try {
@@ -332,10 +347,23 @@ export default function App() {
             }
           }
         );
+
+        if (!response.ok) {
+          if (response.status === 429) {
+            throw new Error("Rate limit exceeded. Please slow down and try again shortly.");
+          }
+          throw new Error(`Server connection error (${response.status}).`);
+        }
+
         const data = await response.json();
         setApiResults(data.docs || []);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Open Library connection issue:", error);
+        if (!navigator.onLine) {
+          setApiError("You appear to be offline. Check your network connection.");
+        } else {
+          setApiError(error.message || "Failed to fetch records from the global catalog.");
+        }
         setApiResults([]);
       } finally {
         setIsSearchingApi(false);
@@ -384,7 +412,6 @@ export default function App() {
     }
 
     const authorText = item.author_name ? item.author_name[0] : "Unknown Author";
-    
     const authorParts = authorText.split(" ");
     const authorSort = authorParts.length > 1 
       ? `${authorParts[authorParts.length - 1]}, ${authorParts.slice(0, -1).join(" ")}`
@@ -751,7 +778,7 @@ export default function App() {
           font-weight: bold;
           display: flex;
           align-items: center;
-          justify-content: center;
+          justifyContent: center;
         }
         .gr-page-btn:hover:not(:disabled) {
           background: var(--sidebar-btn-hover);
@@ -776,7 +803,7 @@ export default function App() {
           -webkit-backdrop-filter: blur(12px);
           display: flex;
           align-items: center;
-          justify-content: center; /* Centers the container horizontally */
+          justify-content: center;
           z-index: 1000;
           animation: backdropBlurFade 0.25s linear both;
         }
@@ -790,7 +817,7 @@ export default function App() {
           perspective: 1500px;
           display: flex;
           align-items: center;
-          justify-content: center; /* Centers the image inside the container */
+          justifyContent: center;
           animation: bookOpeningReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
@@ -864,7 +891,7 @@ export default function App() {
             </a>
           </div>
 
-          {/* BIGGER GLOBAL ENGINE SEARCH CONTAINER */}
+          {/* GLOBAL API SEARCH ENGINE CONTAINER */}
           <div ref={dropdownRef} style={{ position: "relative", display: "flex", alignItems: "center", flexGrow: 1, minWidth: 260, marginLeft: 10 }}>
             <input
               type="text"
@@ -894,7 +921,7 @@ export default function App() {
               )}
             </div>
 
-            {/* GLOBAL ENGINE SEARCH DROPDOWN PORTAL */}
+            {/* GLOBAL ENGINE DROPDOWN OVERLAY PANEL */}
             {showApiDropdown && (
               <div style={{
                 position: "absolute",
@@ -911,45 +938,70 @@ export default function App() {
                 maxHeight: 400,
                 overflowY: "auto"
               }}>
-                {isSearchingApi && (
+                {/* Condition A: Keystroke Validation Notice */}
+                {validationMessage && (
+                  <div style={{ padding: "16px", textAlign: "center", fontSize: 13, color: "var(--text-muted)", fontFamily: "Arial, sans-serif" }}>
+                    {validationMessage}
+                  </div>
+                )}
+
+                {/* Condition B: Explicit Network / System Error Boundaries */}
+                {apiError && (
+                  <div style={{ 
+                    padding: "16px", 
+                    textAlign: "center", 
+                    fontSize: 13, 
+                    color: "#c53030", 
+                    background: "var(--remove-hover-bg)", 
+                    fontFamily: "Arial, sans-serif",
+                    fontWeight: 500 
+                  }}>
+                    ⚠️ {apiError}
+                  </div>
+                )}
+
+                {/* Condition C: Ongoing Request State */}
+                {isSearchingApi && !apiError && (
                   <div style={{ padding: "16px", textAlign: "center", fontSize: 13, color: "var(--text-muted)", fontFamily: "Arial, sans-serif" }}>
                     Searching live global library engine...
                   </div>
                 )}
-                {!isSearchingApi && apiResults.length === 0 && (
+
+                {/* Condition D: Empty Records Output Fallback */}
+                {!isSearchingApi && !apiError && !validationMessage && apiResults.length === 0 && (
                   <div style={{ padding: "16px", textAlign: "center", fontSize: 13, color: "var(--text-muted)", fontFamily: "Arial, sans-serif" }}>
                     No catalog records found matching that query.
                   </div>
                 )}
-                {apiResults.map((item) => {
-                  return (
-                    <div 
-                      key={item.key} 
-                      className="gr-api-result-item"
-                      onClick={() => handleAddBookFromApi(item)}
-                    >
-                      <img 
-                        src={item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-S.jpg` : "https://openlibrary.org/images/icons/avatar_book-sm.png"} 
-                        alt="" 
-                        style={{ width: 34, height: 48, objectFit: "cover", borderRadius: 3, border: "1px solid var(--border-color)", flexShrink: 0 }} 
-                      />
-                      <div style={{ flexGrow: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: "bold", color: "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Arial, sans-serif" }}>
-                          {item.title}
-                        </div>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Arial, sans-serif", marginTop: 2 }}>
-                          by {item.author_name ? item.author_name[0] : "Unknown Author"}
-                        </div>
+
+                {/* Condition E: Populated API Records Mapper */}
+                {!isSearchingApi && !apiError && !validationMessage && apiResults.map((item) => (
+                  <div 
+                    key={item.key} 
+                    className="gr-api-result-item"
+                    onClick={() => handleAddBookFromApi(item)}
+                  >
+                    <img 
+                      src={item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-S.jpg` : "https://openlibrary.org/images/icons/avatar_book-sm.png"} 
+                      alt="" 
+                      style={{ width: 34, height: 48, objectFit: "cover", borderRadius: 3, border: "1px solid var(--border-color)", flexShrink: 0 }} 
+                    />
+                    <div style={{ flexGrow: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: "bold", color: "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Arial, sans-serif" }}>
+                        {item.title}
                       </div>
-                      <span 
-                        className="gr-action-pill" 
-                        style={{ fontSize: 10, padding: "3px 8px", pointerEvents: "none" }}
-                      >
-                        + Add
-                      </span>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Arial, sans-serif", marginTop: 2 }}>
+                        by {item.author_name ? item.author_name[0] : "Unknown Author"}
+                      </div>
                     </div>
-                  );
-                })}
+                    <span 
+                      className="gr-action-pill" 
+                      style={{ fontSize: 10, padding: "3px 8px", pointerEvents: "none" }}
+                    >
+                      + Add
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -1048,14 +1100,14 @@ export default function App() {
           </div>
         </aside>
 
-        {/* WORKSPACE CENTRAL WORKGROUND */}
+        {/* WORKSPACE CENTRAL DASHBOARD */}
         <main style={{ flex: 1, minWidth: 0 }}>
 
-          {/* Control Strip containing the Smaller Search Input */}
+          {/* Control Strip containing the Filter Search Input */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", paddingBottom: 14, marginBottom: 20, borderBottom: "1px solid var(--border-color)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               
-              {/* SMALLER SHELF FILTER SEARCH INPUT */}
+              {/* INTER-SHELF FILTER SEARCH INPUT */}
               <div style={{ position: "relative" }}>
                 <input
                   type="text"
@@ -1084,7 +1136,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* RESPONSIVE DATA TABLE CONTAINER */}
+          {/* RESPONSIVE DATA TABLE REPOSITORY */}
           <div style={{ width: "100%", overflowX: "auto", borderRadius: 8 }}>
             <table className="gr-modern-table" style={{ minWidth: 950 }}>
               <thead>
@@ -1243,7 +1295,7 @@ export default function App() {
             </table>
           </div>
 
-          {/* TABLE INFO & PAGINATION NAVIGATION CONTROLS */}
+          {/* TABLE META STATS & PAGINATION LINKS */}
           <div style={{ 
             display: "flex", 
             alignItems: "center", 
@@ -1256,7 +1308,7 @@ export default function App() {
               {books.length !== filtered.length && ` (filtered from ${books.length} total)`}
             </div>
 
-            {/* Pagination Controls Right Arrow / Left Arrow Array */}
+            {/* Render Pagination only if multiple sheets exist */}
             {totalPages > 1 && (
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <button 
